@@ -1,0 +1,36 @@
+# 使用已有 MySQL 8.0；先根据 README 创建数据库并配置 backend/.env。
+services:
+  init:
+    build: ./backend
+    env_file: backend/.env
+    command: ["python", "-m", "app.migrate"]
+    restart: "no"
+  api:
+    build: ./backend
+    env_file: backend/.env
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  worker:
+    build: ./backend
+    env_file: backend/.env
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  web:
+    build: ./frontend
+    ports: ["127.0.0.1:8080:80"]
+    depends_on: [api]
+    restart: unless-stopped
+
+  knowledge-worker:
+    build: ./backend
+    env_file: backend/.env
+    command: ["python", "-m", "app.knowledge_worker"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
