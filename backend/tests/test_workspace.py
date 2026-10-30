@@ -8,13 +8,14 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.collector import persist
-from app.db import Base, get_session
-from app.knowledge import parse_feed, save_topics
-from app.knowledge_sources import FeedSource
+from app.core.database import Base, get_session
 from app.main import app
-from app.migrate import migrate
 from app.models import CreationCard, PersonalItem, Run, Snapshot
+from app.runtime.migrations import migrate
+from app.services.knowledge.collector import save_topics
+from app.services.knowledge.normalization import parse_feed
+from app.services.knowledge.sources import FeedSource
+from app.services.skills.collector import persist
 
 AT = datetime(2026, 10, 28, 18)
 
@@ -175,7 +176,7 @@ def test_summary_ignores_failed_runs_and_uses_stable_ids(context):
 
 
 def test_status_and_empty_summary(context, monkeypatch):
-    from app import workspace_api
+    from app.api.workspace import reports as workspace_api
 
     client, db, _ = context
     monkeypatch.setattr(workspace_api, "utcnow", lambda: datetime(2026, 10, 30, 18, 1))

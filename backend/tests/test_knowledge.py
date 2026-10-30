@@ -9,21 +9,20 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.config import Settings
-from app.db import Base, get_session
-from app.knowledge import (
-    canonical_url,
-    classify_region,
-    collect_knowledge,
-    parse_date,
-    parse_feed,
-    save_topics,
-)
-from app.knowledge_categories import get_category_catalog
-from app.knowledge_sources import FeedSource
+from app.core.config import Settings
+from app.core.database import Base, get_session
 from app.main import app
 from app.models import KnowledgeSourceState, KnowledgeTopic
-from app.skill_metadata import extract_metadata
+from app.services.knowledge.categories import get_category_catalog
+from app.services.knowledge.collector import collect_knowledge, save_topics
+from app.services.knowledge.normalization import (
+    canonical_url,
+    classify_region,
+    parse_date,
+    parse_feed,
+)
+from app.services.knowledge.sources import FeedSource
+from app.services.skills.metadata import extract_metadata
 
 RSS = b"""<?xml version="1.0"?><rss version="2.0"><channel><item>
 <title>A discovery</title><link>https://example.com/a?utm_source=rss</link>
@@ -174,7 +173,7 @@ def test_region_uses_topic_evidence_before_source_default():
 
 
 def test_migration_backfills_known_source_and_is_repeatable(engine):
-    from app.migrate import migrate
+    from app.runtime.migrations import migrate
 
     with Session(engine) as db:
         record = parse_feed(RSS, SOURCE)[0]

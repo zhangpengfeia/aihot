@@ -5,8 +5,8 @@ import socket
 import httpx
 import pytest
 
-from app import feed_http
-from app.feed_http import PublicFeedTransport, fetch_feed, public_addresses
+from app.infrastructure import feed_http
+from app.infrastructure.feed_http import PublicFeedTransport, fetch_feed, public_addresses
 
 
 def test_transport_pins_ip_and_preserves_host_and_tls_name(monkeypatch):
@@ -130,7 +130,7 @@ def test_redirect_loop_stops_after_four_requests():
 
 
 def test_transport_tries_another_validated_ip(monkeypatch):
-    from app import feed_http
+    from app.infrastructure import feed_http
 
     calls = []
     monkeypatch.setattr(

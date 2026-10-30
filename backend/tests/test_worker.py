@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app import worker
+from app.runtime import github_worker as worker
 
 
 @pytest.mark.parametrize(

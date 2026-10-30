@@ -7,10 +7,10 @@ import pytest
 from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.orm import Session
 
-from app import collector
-from app.config import Settings
-from app.db import Base
+from app.core.config import Settings
+from app.core.database import Base
 from app.models import Run, Snapshot
+from app.services.skills import collector
 
 
 @pytest.mark.skipif(os.getenv("AIHOT_TEST_MYSQL") != "1", reason="未配置专用 MySQL 测试库")

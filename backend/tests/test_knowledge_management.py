@@ -9,16 +9,17 @@ from sqlalchemy import create_engine, event, func, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.config import Settings
-from app.db import Base, get_session
-from app.feed_http import get_feed_fetcher
-from app.knowledge import collect_knowledge, parse_feed, save_topics
-from app.knowledge_categories import get_category_catalog
-from app.knowledge_management import seed_sources
-from app.knowledge_sources import FeedSource
+from app.core.config import Settings
+from app.core.database import Base, get_session
+from app.infrastructure.feed_http import get_feed_fetcher
 from app.main import app
-from app.migrate import migrate
 from app.models import KnowledgeSourceState, KnowledgeTopic, ManagedKnowledgeSource
+from app.runtime.migrations import migrate
+from app.services.knowledge.categories import get_category_catalog
+from app.services.knowledge.collector import collect_knowledge, save_topics
+from app.services.knowledge.management import seed_sources
+from app.services.knowledge.normalization import parse_feed
+from app.services.knowledge.sources import FeedSource
 
 RSS = b"<rss><channel><item><title>Research</title><link>https://example.com/article</link><description>Summary</description></item></channel></rss>"
 SOURCES = [

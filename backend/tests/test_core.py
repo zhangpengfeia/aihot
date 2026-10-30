@@ -11,13 +11,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.schema import CreateTable
 
-from app.collector import persist
-from app.config import Settings
-from app.db import Base, get_session
-from app.github import GitHubClient, classify
+from app.core.config import Settings
+from app.core.database import Base, get_session
+from app.infrastructure.github import GitHubClient, classify
 from app.main import app
 from app.models import Run, Snapshot
-from app.time_utils import time_slot
+from app.services.skills.collector import persist
+from app.utils.time import time_slot
 
 
 @pytest.fixture

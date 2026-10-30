@@ -1,0 +1,38 @@
+"""Skill 批次与快照的响应数据映射。"""
+
+from app.models import Run, Snapshot
+from app.utils.time import iso
+
+
+def run_data(run: Run):
+    return {
+        "id": run.id,
+        "slot": iso(run.slot),
+        "status": run.status,
+        "started_at": iso(run.started_at),
+        "finished_at": iso(run.finished_at),
+        "candidate_count": run.candidate_count,
+        "matched_count": run.matched_count,
+        "error": run.error,
+    }
+
+
+def snapshot_data(s: Snapshot):
+    return {
+        "id": s.id,
+        "repo_id": s.repo_id,
+        "full_name": s.full_name,
+        "url": f"https://github.com/{s.full_name}",
+        "description": s.description,
+        "stars": s.stars,
+        "forks": s.forks,
+        "delta_24h": s.delta_24h,
+        "baseline_at": iso(s.baseline_at),
+        "observed_at": iso(s.observed_at),
+        "language": s.language,
+        "license": s.license,
+        "pushed_at": s.pushed_at,
+        "evidence": s.evidence,
+        "categories": s.categories or ["其他"],
+        "installation": s.installation or "历史资料未提取安装方式，请查看 README。",
+    }

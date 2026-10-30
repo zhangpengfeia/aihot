@@ -3,8 +3,8 @@
 import httpx
 import pytest
 
-from app import knowledge_categories as module
-from app.knowledge_categories import CategoryCatalog, fetch_categories
+from app.services.knowledge import categories as module
+from app.services.knowledge.categories import CategoryCatalog, fetch_categories
 
 
 def payload(*names, **extra):
