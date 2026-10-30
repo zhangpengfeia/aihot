@@ -36,6 +36,14 @@ docker run --rm -it --log-driver none caddy:2-alpine caddy hash-password
 
 部署私钥和数据库隧道私钥是两套用途。隧道公钥在数据库堡垒机授权，建议限制为目标数据库地址转发；部署公钥在网站服务器授权。获取 SSH 主机密钥后，应通过云控制台/可信渠道核对指纹再保存，流水线和隧道均启用 StrictHostKeyChecking，不临时信任扫描结果。
 
+数据库就在网站服务器本机、`tunnel.env` 配置为 `SSH_HOST=127.0.0.1`、`SSH_USER=root` 且数据库为本机回环地址时，可在服务器执行：
+
+```bash
+bash deploy/setup-local-tunnel.sh /opt/aihot
+```
+
+脚本将 SSH_HOST 改为当前 Docker 宿主机网关（容器内的 127.0.0.1 指向容器自身），生成专用数据库隧道密钥，仅授权数据库目标转发，并使用本机 SSH 主机公钥填充 known_hosts。不覆盖已有私钥，不移除其他 SSH 授权。若已有同一公钥授权则保留该授权规则；远端堡垒机配置不会自动改写。Docker 网关或 SSH 主机密钥发生变化时需重新核验配置。
+
 ## GitHub 配置
 
 仓库：`zhangpengfeia/aihot`。在 Settings → Environments 创建 `production`，添加以下 Secrets（也可用 Repository Secrets）。若希望推送后全自动发布，不设置需要人工审核的 environment 规则。
