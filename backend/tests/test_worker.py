@@ -11,13 +11,13 @@ from app.runtime import github_worker as worker
 @pytest.mark.parametrize(
     ("now", "expected"),
     [
-        ("2026-10-30T17:59:59", "2026-10-30T18:00:00"),
-        ("2026-10-30T18:00:00", "2026-10-30T18:00:00"),
-        ("2026-10-30T18:00:01", "2026-10-31T18:00:00"),
-        ("2026-12-31T19:00:00", "2027-01-01T18:00:00"),
+        ("2026-10-30T15:59:59", "2026-10-30T16:00:00"),
+        ("2026-10-30T16:00:00", "2026-10-30T16:00:00"),
+        ("2026-10-30T16:00:01", "2026-10-31T16:00:00"),
+        ("2026-12-31T19:00:00", "2027-01-01T16:00:00"),
     ],
 )
-def test_next_collection_beijing_2am(now, expected):
+def test_next_collection_beijing_midnight(now, expected):
     assert worker.next_collection_at(datetime.fromisoformat(now)) == datetime.fromisoformat(
         expected
     )
@@ -40,7 +40,7 @@ def test_worker_waits_before_first_collection(monkeypatch):
     monkeypatch.setattr(worker, "collect", collect)
     with pytest.raises(KeyboardInterrupt):
         worker.main()
-    assert calls == [("wait", datetime(2026, 10, 30, 18)), ("collect", None)]
+    assert calls == [("wait", datetime(2026, 10, 30, 16)), ("collect", None)]
 
 
 def test_once_collects_immediately(monkeypatch):
@@ -82,4 +82,4 @@ def test_next_run_is_tomorrow_even_after_failure(monkeypatch, fail_first):
     monkeypatch.setattr(worker, "collect", collect)
     with pytest.raises(KeyboardInterrupt):
         worker.main()
-    assert scheduled == [datetime(2026, 10, 30, 18), datetime(2026, 10, 31, 18)]
+    assert scheduled == [datetime(2026, 10, 30, 16), datetime(2026, 10, 31, 16)]

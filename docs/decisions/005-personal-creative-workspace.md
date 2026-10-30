@@ -8,7 +8,7 @@
 
 每日摘要对比最近两次成功的累计 Star 榜，以 repo_id 匹配；跳过失败批次，缺少前期时不宣布所有条目都是新上榜。Star 增长继续使用原有 delta_24h 的有效基线，不把两次不定间隔采集相减称作 24 小时增长。页面展示两期完成时间说明对比范围。
 
-采集状态查询现有 collection_runs、knowledge_source_states，计划时间复用 worker 的北京时间 02:00 规则。缺少进程心跳时不声称 worker 在线，避免 running 记录残留造成误导。原榜单一小时过期提示改为 26 小时，适配每日计划及采集耗时。
+采集状态查询现有 collection_runs、knowledge_source_states，计划时间复用 worker 的北京时间 00:00 规则。缺少进程心跳时不声称 worker 在线，避免 running 记录残留造成误导。原榜单一小时过期提示改为 26 小时，适配每日计划及采集耗时。
 
 工作空间读写路由独立为 workspace_api。写入校验 JSON、字段长度、阶段与 URL；浏览器 Origin/Fetch Metadata 检查拒绝跨源写入。前后端同源，Nginx 保留原始 Host；无账户鉴权，部署范围仍是个人实例。唯一约束处理并发重复创建，PATCH/PUT 只更新明确传入的非空字段。
 

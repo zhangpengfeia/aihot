@@ -53,7 +53,7 @@ export function DailySummaryPage({
   return (
     <>
       <Heading
-        title="每日变化摘要"
+        title="首页看板"
         description="对比最近两次成功的累计 Star 榜，快速查看值得关注的变化。"
         {...resource}
       />

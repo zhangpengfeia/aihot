@@ -18,6 +18,7 @@ export type ViewKey =
   | 'status'
   | 'creation';
 export const navigationItems: MenuProps['items'] = [
+  { key: 'summary', icon: <FireOutlined />, label: '首页看板' },
   {
     key: 'skills',
     icon: <BookOutlined />,
@@ -38,7 +39,6 @@ export const navigationItems: MenuProps['items'] = [
     ],
   },
   { key: 'favorites', icon: <StarOutlined />, label: '收藏与个人备注' },
-  { key: 'summary', icon: <FireOutlined />, label: '每日变化摘要' },
   { key: 'status', icon: <ClockCircleOutlined />, label: '采集状态面板' },
   {
     key: 'creator-center',
@@ -55,7 +55,7 @@ export const viewLabels: Record<ViewKey, string> = {
   sources: '知识选 / 采集接口管理',
   categories: '分类整理',
   favorites: '收藏与个人备注',
-  summary: '每日变化摘要',
+  summary: '首页看板',
   status: '采集状态面板',
   creation: '创作者中心 / 选题创作看板',
 };

@@ -1,4 +1,4 @@
-"""GitHub 独立采集进程：每天北京时间 02:00 执行；--once 立即执行。"""
+"""GitHub 独立采集进程：每天北京时间 00:00 执行；--once 立即执行。"""
 
 import argparse
 import logging
@@ -17,9 +17,9 @@ SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 
 def next_collection_at(now: datetime) -> datetime:
-    """返回不早于当前时间的北京时间 02:00，以 UTC 无时区值供调度。"""
+    """返回不早于当前时间的北京时间 00:00，以 UTC 无时区值供调度。"""
     local = now.replace(tzinfo=UTC).astimezone(SHANGHAI)
-    target = local.replace(hour=2, minute=0, second=0, microsecond=0)
+    target = local.replace(hour=0, minute=0, second=0, microsecond=0)
     if target < local:
         target += timedelta(days=1)
     return target.astimezone(UTC).replace(tzinfo=None)
@@ -53,7 +53,7 @@ def main():
                 raise
         if args.once:
             break
-        # 严格选择后续执行点，避免瞬间完成时重复触发同一个 02:00。
+        # 严格选择后续执行点，避免瞬间完成时重复触发同一个 00:00。
         target = next_collection_at(utcnow() + timedelta(microseconds=1))
 
 

@@ -1,12 +1,16 @@
 """仅通过 GitHub 官方 API 采集，不运行仓库代码或跟随 README 外部链接。"""
 
 import base64
+import logging
 import re
 import time
 
 import httpx
 
 from app.core.config import Settings
+
+logger = logging.getLogger(__name__)
+MAX_RETRIES = 5
 
 
 class GitHubClient:
@@ -23,17 +27,50 @@ class GitHubClient:
         self.client.close()
 
     def get(self, path: str, params: dict | None = None):
-        """临时服务错误有限重试；限流立即终止批次，避免继续冲击 GitHub。"""
-        for attempt in range(3):
+        """临时断连、超时和服务错误失败后最多重试五次；限流立即终止批次。"""
+        for attempt in range(MAX_RETRIES + 1):
             time.sleep(self.interval)
-            response = self.client.get(path, params=params)
+            try:
+                response = self.client.get(path, params=params)
+            except (
+                httpx.NetworkError,
+                httpx.TimeoutException,
+                httpx.RemoteProtocolError,
+                httpx.ProxyError,
+            ) as exc:
+                if attempt == MAX_RETRIES:
+                    logger.error(
+                        "GitHub 请求重试 %s 次后仍失败（%s）", MAX_RETRIES, type(exc).__name__
+                    )
+                    raise
+                # 仅记录错误类型，避免异常文本中的代理地址或凭据进入日志。
+                logger.warning(
+                    "GitHub 请求暂时失败（%s），等待 %s 秒后进行第 %s/%s 次重试",
+                    type(exc).__name__,
+                    2**attempt,
+                    attempt + 1,
+                    MAX_RETRIES,
+                )
+                time.sleep(2**attempt)
+                continue
             if response.status_code == 404:
                 return None
             if response.status_code in (403, 429):
                 raise RuntimeError("GitHub 拒绝请求或限流；请检查 Token、权限及调用额度")
-            if response.status_code >= 500 and attempt < 2:
-                time.sleep(2**attempt)
-                continue
+            if response.status_code >= 500:
+                if attempt < MAX_RETRIES:
+                    logger.warning(
+                        "GitHub 请求暂时失败（HTTP %s），等待 %s 秒后进行第 %s/%s 次重试",
+                        response.status_code,
+                        2**attempt,
+                        attempt + 1,
+                        MAX_RETRIES,
+                    )
+                    time.sleep(2**attempt)
+                    continue
+                logger.error(
+                    "GitHub 请求重试 %s 次后仍失败（HTTP %s）", MAX_RETRIES, response.status_code
+                )
             response.raise_for_status()
             return response.json()
         raise RuntimeError("GitHub 请求重试失败")
@@ -41,7 +78,7 @@ class GitHubClient:
     def discover(self, queries: list[str]) -> list[dict]:
         """每个关键词分别按 Star 和最近更新搜索，兼顾成熟项目与新项目。"""
         found = {}
-        for query in queries:
+        for index, query in enumerate(queries, 1):
             for sort in ("stars", "updated"):
                 data = self.get(
                     "/search/repositories",
@@ -56,6 +93,14 @@ class GitHubClient:
                     raise RuntimeError("GitHub 搜索未完成，本轮不发布不完整榜单")
                 for repo in data["items"]:
                     found[repo["id"]] = repo
+                logger.info(
+                    "GitHub 搜索进度 %s/%s，排序=%s，本次返回=%s，累计去重仓库=%s",
+                    index,
+                    len(queries),
+                    sort,
+                    len(data["items"]),
+                    len(found),
+                )
         return list(found.values())
 
     def readme(self, name: str) -> str:

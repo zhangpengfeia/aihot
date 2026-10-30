@@ -16,7 +16,7 @@ import type { ViewKey } from './navigation';
 
 /** 应用仅管理导航和全局资料抽屉，具体页面自行管理查询与表单。 */
 export default function App() {
-  const [view, setView] = useState<ViewKey>('library');
+  const [view, setView] = useState<ViewKey>('summary');
   const [selected, setSelected] = useState<number | null>(null);
   const { tick, refresh } = useRefreshTick();
   let content;

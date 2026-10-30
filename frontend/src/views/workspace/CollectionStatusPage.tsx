@@ -27,7 +27,7 @@ export function CollectionStatusPage({ tick }: { tick: number }) {
         <Alert
           type="info"
           showIcon
-          title="GitHub 每天北京时间 02:00 采集；知识来源每半小时采集。"
+          title="GitHub 每天北京时间 00:00 采集；知识来源每半小时采集。"
           description="下次执行为计划时间，需要 worker 持续运行；运行中状态来自数据库记录，不能据此确认进程在线。"
         />
         <Row gutter={[16, 16]}>

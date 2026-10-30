@@ -193,7 +193,8 @@ def test_status_and_empty_summary(context, monkeypatch):
     assert status["latest"]["status"] == "failed"
     assert status["last_success"]["status"] == "success"
     assert status["last_failure"]["error"] == "rate limit"
-    assert status["next_scheduled_at"] == "2026-10-31T18:00:00+00:00"
+    assert status["next_scheduled_at"] == "2026-10-31T16:00:00+00:00"
+    assert status["schedule"] == "每天 00:00"
     assert status["total_successful_runs"] == 1
     for run in db.scalars(select(Run)):
         run.status = "failed"

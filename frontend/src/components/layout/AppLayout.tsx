@@ -58,7 +58,7 @@ export function AppLayout({
         <div className="sider-footer">
           {!collapsed ? (
             <>
-              <Badge status="processing" text={<Text>GitHub 每天 02:00 采集</Text>} />
+              <Badge status="processing" text={<Text>GitHub 每天 00:00 采集</Text>} />
               <p>GitHub 官方 API · 北京时间</p>
             </>
           ) : (

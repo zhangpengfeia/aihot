@@ -1,5 +1,7 @@
 """采集服务：网络请求在事务外执行，完整榜单在单个事务内提交。"""
 
+import logging
+import time
 from datetime import datetime, timedelta
 
 from sqlalchemy import select, text
@@ -10,6 +12,8 @@ from app.infrastructure.github import GitHubClient, classify
 from app.models import Ranking, Repository, Run, Snapshot
 from app.services.skills.metadata import extract_metadata
 from app.utils.time import time_slot, utcnow
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_growth(session: Session, repo_id: int, stars: int, observed: datetime):
@@ -94,6 +98,7 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
     with engine.connect() as lock_connection:
         locked = lock_connection.scalar(text("SELECT GET_LOCK('aihot.collect', 0)"))
         if locked != 1:
+            logger.info("跳过 GitHub 采集：已有任务正在执行")
             return False
         github = None
         try:
@@ -102,6 +107,7 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
             with factory.begin() as session:
                 run = session.scalar(select(Run).where(Run.slot == slot))
                 if run and run.status == "success":
+                    logger.info("跳过 GitHub 采集：当前时间窗口已有成功批次，批次=%s", run.id)
                     return False
                 if not run:
                     run = Run(slot=slot, started_at=utcnow())
@@ -116,6 +122,16 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
                         .limit(settings.tracked_limit)
                     )
                 )
+            started = time.monotonic()
+            processed = skipped = unmatched = 0
+            records = []
+            logger.info(
+                "GitHub 采集开始：批次=%s，搜索关键词=%s，候选上限=%s，历史跟踪=%s",
+                run_id,
+                len(settings.search_queries),
+                settings.candidate_limit,
+                len(tracked),
+            )
             github = client or GitHubClient(settings)
             try:
                 discovered = github.discover(settings.search_queries)
@@ -126,26 +142,70 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
                     : settings.candidate_limit - half
                 ]
                 pool = {r["id"]: r for r in popular + recent}
+                selected_count = len(pool)
                 # 继续观察历史项目，避免仓库掉出搜索窗口后失去增长基线。
                 # 候选也重新获取统计，避免以搜索索引的缓存值计算增长。
                 for repo in tracked:
                     pool.setdefault(repo.id, {"full_name": repo.full_name})
-                records = []
-                for candidate in pool.values():
+                logger.info(
+                    "GitHub 搜索完成：发现=%s，选中候选=%s，历史补充=%s，待检查总数=%s",
+                    len(discovered),
+                    selected_count,
+                    len(pool) - selected_count,
+                    len(pool),
+                )
+                for index, candidate in enumerate(pool.values(), 1):
+                    logger.info(
+                        "GitHub 正在采集 %s/%s：%s", index, len(pool), candidate["full_name"]
+                    )
                     repo = github.get(f"/repos/{candidate['full_name']}")
                     if not repo or repo.get("archived") or repo.get("fork"):
-                        continue
-                    observed = utcnow()
-                    readme = github.readme(repo["full_name"])
-                    evidence = classify(repo, readme)
-                    if evidence:
-                        records.append((repo, readme, evidence, observed))
+                        skipped += 1
+                    else:
+                        observed = utcnow()
+                        readme = github.readme(repo["full_name"])
+                        evidence = classify(repo, readme)
+                        if evidence:
+                            records.append((repo, readme, evidence, observed))
+                        else:
+                            unmatched += 1
+                    processed += 1
+                    logger.info(
+                        "GitHub 采集进度：已检查=%s/%s，匹配=%s，未匹配=%s，跳过=%s，耗时=%.1f秒",
+                        processed,
+                        len(pool),
+                        len(records),
+                        unmatched,
+                        skipped,
+                        time.monotonic() - started,
+                    )
                 if not records:
                     raise RuntimeError("本轮未找到匹配项目，保留上一期成功榜单")
+                logger.info("GitHub 开始入库：批次=%s，待保存项目=%s", run_id, len(records))
                 with factory.begin() as session:
                     persist(session, run_id, len(pool), records)
+                logger.info(
+                    "GitHub 采集成功：批次=%s，候选=%s，已检查=%s，已入库=%s，未匹配=%s，跳过=%s，耗时=%.1f秒",
+                    run_id,
+                    len(pool),
+                    processed,
+                    len(records),
+                    unmatched,
+                    skipped,
+                    time.monotonic() - started,
+                )
                 return True
             except Exception as exc:
+                logger.error(
+                    "GitHub 采集失败：批次=%s，已检查=%s，已匹配=%s，未匹配=%s，跳过=%s，耗时=%.1f秒，错误=%s，本轮未发布",
+                    run_id,
+                    processed,
+                    len(records),
+                    unmatched,
+                    skipped,
+                    time.monotonic() - started,
+                    type(exc).__name__,
+                )
                 with factory.begin() as session:
                     run = session.get(Run, run_id)
                     run.status, run.finished_at = "failed", utcnow()

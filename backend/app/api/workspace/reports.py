@@ -112,7 +112,7 @@ def collection_status(db: Session = Depends(get_session)):
     return {
         "server_time": iso(now),
         "timezone": "Asia/Shanghai",
-        "schedule": "每天 02:00",
+        "schedule": "每天 00:00",
         "next_scheduled_at": iso(next_collection_at(now)),
         "latest": run_data(recent[0]) if recent else None,
         "last_success": run_data(success) if success else None,

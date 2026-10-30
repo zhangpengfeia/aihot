@@ -1,7 +1,7 @@
 # collection-status
 
 ## 目标与验收
-展示 GitHub 最近尝试和成功批次、失败原因、历史记录、北京时间下次每日 02:00 计划；计划非在线心跳，不主动触发采集。
+展示 GitHub 最近尝试和成功批次、失败原因、历史记录、北京时间下次每日 00:00 计划；计划非在线心跳，不主动触发采集。
 
 ## 结构与风格
 后端 app/ 模型与独立 router，前端 src/ 独立组件；沿用 Python snake_case、TypeScript interface 与 Ant Design。示例：`session.get(KnowledgeTopic, topic_id)`。
