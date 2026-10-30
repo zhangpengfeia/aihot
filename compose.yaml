@@ -1,11 +1,18 @@
 # 使用已有 MySQL 8.0；先根据 README 创建数据库并配置 backend/.env。
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "10"
 services:
   init:
+    logging: *logging
     build: ./backend
     env_file: backend/.env
     command: ["python", "-m", "app.runtime.migrations"]
     restart: "no"
   api:
+    logging: *logging
     build: ./backend
     env_file: backend/.env
     depends_on:
@@ -13,6 +20,7 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
   worker:
+    logging: *logging
     build: ./backend
     env_file: backend/.env
     command: ["python", "-m", "app.runtime.github_worker"]
@@ -21,12 +29,14 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
   web:
+    logging: *logging
     build: ./frontend
     ports: ["127.0.0.1:8080:80"]
     depends_on: [api]
     restart: unless-stopped
 
   knowledge-worker:
+    logging: *logging
     build: ./backend
     env_file: backend/.env
     command: ["python", "-m", "app.runtime.knowledge_worker"]

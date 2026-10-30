@@ -79,6 +79,8 @@ npm run dev
 
 ## Docker 部署（使用已有 MySQL）
 
+`zhangff.cn` 生产部署与 GitHub 自动发布见 [服务器部署说明](deploy/README.md)。包含服务器 SSH 隧道、常驻定时采集、HTTPS/认证、发布健康检查与应用版本回退；7 个生产容器日志合计预算 700 MiB，达到阈值自动轮转。
+
 1. 配好 backend/.env。容器中 MYSQL_HOST 应填写数据库网络地址；macOS Docker 访问宿主机可使用 host.docker.internal，不能填写 127.0.0.1。
 2. 执行 `docker compose up --build -d`。
 3. 访问 http://127.0.0.1:8080 。`docker compose logs -f worker` 查看采集状态。

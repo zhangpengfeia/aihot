@@ -1,0 +1,19 @@
+{
+    email {$ACME_EMAIL}
+    log {
+        output stdout
+        level INFO
+    }
+}
+
+{$SITE_DOMAIN} {
+    encode zstd gzip
+    log {
+        output stdout
+        format json
+    }
+    basic_auth {
+        {$SITE_USER} {$SITE_PASSWORD_HASH}
+    }
+    reverse_proxy web:80
+}

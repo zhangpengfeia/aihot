@@ -48,6 +48,8 @@ deploy/config/*.env
 /.pipeline/
 /current
 /previous
+/shared/
+/incoming/
 *.egg-info/
 .pytest_cache/
 .coverage

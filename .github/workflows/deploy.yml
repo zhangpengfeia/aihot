@@ -1,0 +1,96 @@
+name: Check and deploy AIHot
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aihot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Check backend
+        run: |
+          python -m pip install './backend' 'pytest>=8,<9' 'ruff>=0.9,<1'
+          cd backend
+          ruff check app tests
+          pytest -q
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run format:check
+          npm run build
+      - name: Validate deployment configuration and scripts
+        run: |
+          python deploy/validate.py
+          python -m unittest discover -s deploy/tests -v
+          for script in deploy/*.sh deploy/tunnel/*.sh; do bash -n "$script"; done
+          shellcheck deploy/*.sh deploy/tunnel/*.sh
+      - name: Build deployment images
+        run: |
+          docker build -t aihot-ci-backend ./backend
+          docker build -t aihot-ci-web ./frontend
+          docker build -t aihot-ci-tunnel ./deploy/tunnel
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://zhangff.cn
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Upload and deploy fixed commit
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST || '152.136.228.231' }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT || '/opt/aihot' }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          [[ $DEPLOY_HOST =~ ^[a-zA-Z0-9.-]+$ && $DEPLOY_USER =~ ^[a-zA-Z0-9_-]+$ ]]
+          [[ $DEPLOY_PORT =~ ^[0-9]+$ && $DEPLOY_ROOT =~ ^/[a-zA-Z0-9_/-]+$ ]]
+          [[ $DEPLOY_ROOT != / && $DEPLOY_ROOT != *..* ]]
+          [[ -n $DEPLOY_SSH_KEY && -n $DEPLOY_KNOWN_HOSTS ]] || { echo 'Configure DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS secrets'; exit 1; }
+          ssh_dir=$(mktemp -d "$RUNNER_TEMP/aihot-ssh.XXXXXX")
+          archive="$RUNNER_TEMP/aihot-$GITHUB_SHA.tar.gz"
+          trap 'rm -rf -- "$ssh_dir"; rm -f -- "$archive"' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$ssh_dir/id_ed25519"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          opts=(-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$ssh_dir/id_ed25519")
+          target="$DEPLOY_USER@$DEPLOY_HOST"
+          git archive --format=tar.gz --output "$archive" "$GITHUB_SHA"
+          checksum=$(sha256sum "$archive" | cut -d ' ' -f 1)
+          ssh "${opts[@]}" -p "$DEPLOY_PORT" "$target" "test -d '$DEPLOY_ROOT/shared' && mkdir -p '$DEPLOY_ROOT/incoming' && chmod 700 '$DEPLOY_ROOT/incoming'"
+          scp "${opts[@]}" -P "$DEPLOY_PORT" "$archive" "$target:$DEPLOY_ROOT/incoming/$GITHUB_SHA.tar.gz"
+          ssh "${opts[@]}" -p "$DEPLOY_PORT" "$target" "bash -s -- '$DEPLOY_ROOT' '$GITHUB_SHA' '$checksum'" < deploy/receive.sh
