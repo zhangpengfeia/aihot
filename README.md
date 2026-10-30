@@ -112,11 +112,25 @@ npm run build
 ## 目录与维护约定
 
 ```text
-backend/app/      配置、模型、GitHub 客户端、采集服务、worker、只读 API
-backend/tests/    核心规则和接口测试
-frontend/src/    React 页面、接口类型、响应式样式
-compose.yaml     Web/API/worker 部署
- docs/decisions/ 架构与排名决策
+backend/app/api/             按功能拆分的 HTTP 接口
+backend/app/core/            配置、默认来源与数据库
+backend/app/models/          Skill / 知识 / 工作空间表定义
+backend/app/services/        按领域拆分的业务规则与采集服务
+backend/app/infrastructure/  外部 HTTP 与 GitHub 客户端
+backend/app/schemas/         请求输入模型
+backend/app/runtime/         worker、初始化与迁移
+backend/app/utils/           纯工具
+backend/tests/               核心规则和接口测试
+frontend/src/app/            应用壳、导航和主题
+frontend/src/views/          skills / knowledge / workspace 页面
+frontend/src/components/     跨页面共用组件
+frontend/src/hooks/          共用加载和刷新行为
+frontend/src/api/            HTTP 请求
+frontend/src/types/          接口类型
+frontend/src/styles/         按职责拆分的样式
+frontend/src/utils/          日期等工具
+compose.yaml                Web/API/worker 部署
+ docs/decisions/             架构与排名决策
 ```
 
 函数使用类型注解，中文注释解释业务规则、边界和取舍。修改排名逻辑应同步文档和测试；数据库后续升级应增加显式迁移。README 为项目作者原文，未经本工具实测；许可证仅记录原始元数据，使用素材前请查看原项目条款。
@@ -241,3 +255,8 @@ Hacker News 投票只表示该社区的热度，不能和其他来源作全网�
 
 
 补充：Hacker News 搜索 API（hn.algolia.com）作为独立备选接口，一次读取热点列表，减少逐条请求带来的超时；其 points 仅代表社区指标。通用 JSON 映射可选 score_field。公网传输优先 IPv4，连接失败可尝试第二个已校验地址；数据库连接/读写设置超时，批量入库减少跨 SSH 的查询往返。SSH 隧道仍需保持运行，断线后本轮事务回滚，恢复后可重试，不补造成功记录。
+
+
+## 代码组织
+
+完整目录、模块职责和新增功能的放置位置见 [项目架构说明](docs/architecture.md)。前后端已按领域和职责拆分，现有运行命令和 HTTP 地址保持兼容。本次目录整理无需数据库迁移。

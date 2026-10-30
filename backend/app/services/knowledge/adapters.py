@@ -10,7 +10,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from urllib.parse import quote, urlsplit
 
-from app.services.knowledge.management import source_key
 from app.services.knowledge.normalization import (
     ANGLE_TEMPLATES,
     canonical_url,
@@ -20,6 +19,7 @@ from app.services.knowledge.normalization import (
     plain_text,
 )
 from app.utils.time import utcnow
+from app.utils.urls import source_key
 
 
 def record(source, title, url, summary="", published=None, score=None):

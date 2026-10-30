@@ -1,20 +1,10 @@
-import {
-Alert,
-Card,
-Col,
-Row,
-Space,
-Statistic,
-Table,
-Tag,
-Typography
-} from "antd";
+import { Alert, Card, Col, Row, Space, Statistic, Table, Tag, Typography } from 'antd';
 import { PageHeading as Heading } from '../../components/common/PageHeading';
 import { useResource } from '../../hooks/useResource';
 import { type Run } from '../../types/skills';
 import type { Status } from '../../types/workspace-responses';
 import { formatTime } from '../../utils/date';
-const {Title,Text,Paragraph}=Typography;
+const { Text, Paragraph } = Typography;
 const runLabels: Record<string, string> = {
   success: '成功',
   failed: '失败',

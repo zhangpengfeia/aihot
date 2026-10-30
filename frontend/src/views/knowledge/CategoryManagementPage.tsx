@@ -1,26 +1,26 @@
-import { ReloadOutlined } from "@ant-design/icons";
+import { ReloadOutlined } from '@ant-design/icons';
 import {
-Alert,
-AutoComplete,
-Button,
-Card,
-Flex,
-Input,
-message,
-Modal,
-Popconfirm,
-Select,
-Space,
-Table,
-Tag,
-Typography
-} from "antd";
-import { useState } from "react";
+  Alert,
+  AutoComplete,
+  Button,
+  Card,
+  Flex,
+  Input,
+  message,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
+import { useState } from 'react';
 import { write } from '../../api/http';
 import { useResource as useManagement } from '../../hooks/useResource';
-import type { CategoryResponse,CategoryRow } from '../../types/knowledge-management';
+import type { CategoryResponse, CategoryRow } from '../../types/knowledge-management';
 import { formatTime } from '../../utils/date';
-const {Title,Text,Paragraph}=Typography;
+const { Title, Text, Paragraph } = Typography;
 export function CategoryManagementPage({ tick }: { tick: number }) {
   const resource = useManagement<CategoryResponse>('/knowledge/manage/categories', tick);
   const [q, setQ] = useState('');

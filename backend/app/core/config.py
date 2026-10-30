@@ -6,7 +6,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
-from app.services.knowledge.sources import DEFAULT_SOURCES, FeedSource
+from app.core.sources import DEFAULT_SOURCES, FeedSource
 
 
 class Settings(BaseSettings):

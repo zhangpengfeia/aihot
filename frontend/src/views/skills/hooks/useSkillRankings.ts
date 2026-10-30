@@ -1,14 +1,16 @@
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 import { get } from '../../../api/http';
-import type { Board,Run } from '../../../types/skills';
-export function useSkillRankings(history:boolean,tick:number){
+import type { Board, Run } from '../../../types/skills';
+export function useSkillRankings(history: boolean, tick: number) {
   const [kind, setKind] = useState<'stars' | 'growth'>('stars');
   const [day, setDay] = useState('');
   const [runs, setRuns] = useState<Run[]>([]);
   const [runId, setRunId] = useState<number | undefined>();
   const [board, setBoard] = useState<Board>({ run: null, items: [] });
 
-const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [runError,setRunError]=useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [runError, setRunError] = useState('');
   useEffect(() => {
     const controller = new AbortController();
     setRunError('');
@@ -41,5 +43,5 @@ const [loading,setLoading]=useState(true);const [error,setError]=useState('');co
     return () => controller.abort();
   }, [kind, history, runId, tick]);
 
-return {kind,setKind,day,setDay,runs,runId,setRunId,board,loading,error,runError};
+  return { kind, setKind, day, setDay, runs, runId, setRunId, board, loading, error, runError };
 }

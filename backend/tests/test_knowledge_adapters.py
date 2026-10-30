@@ -7,12 +7,12 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import func, select
 
+from app.core.sources import FeedSource
 from app.models import KnowledgeCitation, KnowledgeTopic
 from app.services.knowledge.adapters import collect_source
 from app.services.knowledge.collector import save_topics
 from app.services.knowledge.management import active_sources, seed_sources
 from app.services.knowledge.normalization import parse_feed
-from app.services.knowledge.sources import FeedSource
 
 pytest_plugins = ["test_knowledge_management"]
 

@@ -1,0 +1,148 @@
+.page-heading {
+  margin-bottom: 24px;
+}
+.page-heading h2.ant-typography {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.5px;
+}
+.page-heading .ant-typography-secondary {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.full-width {
+  width: 100%;
+}
+.stat-icon {
+  color: #94a3b8;
+  margin-right: 8px;
+  font-size: 23px;
+}
+.stat-caption {
+  display: block;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.update-label {
+  color: #68768a;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.update-time {
+  font-size: 21px;
+  line-height: 33px;
+  margin-bottom: 9px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 195px;
+}
+.filter-field > .ant-typography {
+  font-size: 12px;
+}
+.batch-filter {
+  min-width: 325px;
+}
+.filter-help {
+  font-size: 12px;
+  padding-bottom: 5px;
+}
+.ranking-card > .ant-card-body {
+  padding: 0;
+}
+.ranking-card .ant-card-head {
+  padding: 0 24px;
+  min-height: 72px;
+}
+.board-note {
+  padding: 14px 24px;
+  font-size: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.table-alert {
+  margin: 16px 24px;
+}
+.rank-badge {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.rank-1 {
+  background: #fff1df;
+  color: #d97905;
+}
+.rank-2 {
+  background: #eaf1ff;
+  color: #4166ad;
+}
+.rank-3 {
+  background: #f8ede5;
+  color: #ac7956;
+}
+.project-cell {
+  min-width: 220px;
+}
+.project-link.ant-btn {
+  height: auto;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: normal;
+  text-align: left;
+  word-break: break-word;
+}
+.project-description.ant-typography {
+  margin: 7px 0 10px;
+  font-size: 12px;
+  color: #78869a;
+  line-height: 1.7;
+}
+.project-cell .ant-tag {
+  font-size: 11px;
+  margin: 0;
+}
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+.collection-status {
+  font-size: 12px;
+}
+.collection-status .ant-badge {
+  margin-right: 7px;
+}
+.page-footer {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.8;
+  padding: 24px 0 0;
+}
+.detail-title {
+  overflow-wrap: anywhere;
+}
+.readme-content {
+  background: #f8fafc;
+  border: 1px solid #e5eaf2;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+  font-size: 12px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #475569;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.drawer-loading {
+  padding: 70px 20px;
+}

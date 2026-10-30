@@ -1,41 +1,34 @@
-import { PlusOutlined,ReloadOutlined } from "@ant-design/icons";
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
-Alert,
-AutoComplete,
-Button,
-Card,
-Col,
-Flex,
-Form,
-Input,
-InputNumber,
-message,
-Modal,
-Popconfirm,
-Row,
-Select,
-Space,
-Spin,
-Statistic,
-Switch,
-Table,
-Tag,
-Typography
-} from "antd";
-import { useState } from "react";
+  Alert,
+  Button,
+  Card,
+  Col,
+  Flex,
+  Input,
+  message,
+  Popconfirm,
+  Row,
+  Space,
+  Statistic,
+  Switch,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
+import { useState } from 'react';
 import { write } from '../../api/http';
 import { useResource as useManagement } from '../../hooks/useResource';
-import type { CategoryResponse,ManagedSource,Preview } from '../../types/knowledge-management';
+import type { CategoryResponse, ManagedSource, Preview } from '../../types/knowledge-management';
 import { formatTime } from '../../utils/date';
-const {Title,Text,Paragraph}=Typography;
+import { InterfaceFormModal } from './components/InterfaceFormModal';
+import { InterfacePreviewModal } from './components/InterfacePreviewModal';
+const { Title, Text, Paragraph } = Typography;
 export function InterfaceManagementPage({ tick }: { tick: number }) {
   const resource = useManagement<{ items: ManagedSource[] }>('/knowledge/manage/sources', tick);
   const categories = useManagement<CategoryResponse>('/knowledge/manage/categories', tick);
-  const [form] = Form.useForm<Omit<ManagedSource, 'id'> & { options_json: string }>();
   const [editing, setEditing] = useState<ManagedSource | null>(null);
   const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
   const [previewSource, setPreviewSource] = useState<ManagedSource | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -49,19 +42,6 @@ export function InterfaceManagementPage({ tick }: { tick: number }) {
     .map((item) => ({ value: item.name }));
   function edit(source: ManagedSource | null) {
     setEditing(source);
-    setSaveError('');
-    form.resetFields();
-    form.setFieldsValue({
-      ...{
-        region: '国外' as const,
-        topic_kind: '热点候选' as const,
-        enabled: true,
-        adapter: 'rss',
-        item_limit: 100,
-      },
-      ...source,
-      options_json: JSON.stringify(source?.options ?? {}, null, 2),
-    });
     setOpen(true);
   }
   async function test(source: ManagedSource) {
@@ -267,161 +247,24 @@ export function InterfaceManagementPage({ tick }: { tick: number }) {
           />
         </Card>
       </Space>
-      <Modal
-        title={editing ? '编辑采集接口' : '新增采集接口'}
+      <InterfaceFormModal
         open={open}
-        onCancel={() => setOpen(false)}
-        confirmLoading={saving}
-        okText="保存"
-        cancelText="取消"
-        onOk={async () => {
-          try {
-            const values = await form.validateFields();
-            setSaving(true);
-            setSaveError('');
-            const body = {
-              name: values.name.trim(),
-              category: values.category.trim(),
-              region: values.region,
-              topic_kind: values.topic_kind,
-              enabled: values.enabled,
-              url: values.url.trim(),
-              adapter: values.adapter,
-              item_limit: values.item_limit,
-              options: JSON.parse(values.options_json || '{}'),
-            };
-            await write(
-              editing ? `/knowledge/manage/sources/${editing.id}` : '/knowledge/manage/sources',
-              editing ? 'PATCH' : 'POST',
-              body,
-            );
-            setOpen(false);
-            resource.refresh();
-            notice.success('来源配置已保存，下一轮采集生效');
-          } catch (e) {
-            if (e instanceof Error) setSaveError(e.message);
-          } finally {
-            setSaving(false);
-          }
+        editing={editing}
+        options={options}
+        onClose={() => setOpen(false)}
+        onSaved={() => {
+          setOpen(false);
+          resource.refresh();
+          notice.success('接口配置已保存，下一轮采集生效');
         }}
-      >
-        {saveError && (
-          <Alert type="error" showIcon title={saveError} style={{ marginBottom: 16 }} />
-        )}
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="来源名称"
-            rules={[{ required: true, whitespace: true, max: 200 }]}
-          >
-            <Input maxLength={200} />
-          </Form.Item>
-          <Form.Item
-            name="url"
-            label="请求地址"
-            extra="填写公开 RSS / Atom 或 JSON API 地址；支持修改，历史选题保留。请勿在地址中填写私密凭证。"
-            rules={[{ required: true, type: 'url', max: 2000 }]}
-          >
-            <Input placeholder="https://example.com/feed.xml" />
-          </Form.Item>
-          <Form.Item name="adapter" label="接口类型" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { value: 'rss', label: 'RSS / Atom（含 arXiv）' },
-                { value: 'hackernews', label: 'Hacker News 官方 API' },
-                { value: 'wikipedia', label: 'Wikipedia 历史事件 API' },
-                { value: 'json', label: '通用 JSON GET API' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="item_limit" label="单次采集上限" rules={[{ required: true }]}>
-            <InputNumber min={1} max={200} />
-          </Form.Item>
-          <Form.Item
-            name="options_json"
-            label="JSON 字段映射（其他类型保留 {}）"
-            extra='例如 {"items_path":"data.items","title_field":"title","url_field":"url","summary_field":"description","date_field":"published_at"}，支持 data.0.title 点路径。'
-            rules={[
-              {
-                validator: (_, value) => {
-                  try {
-                    const obj = JSON.parse(value || '{}');
-                    if (
-                      !obj ||
-                      Array.isArray(obj) ||
-                      typeof obj !== 'object' ||
-                      Object.values(obj).some((v) => typeof v !== 'string')
-                    )
-                      throw new Error();
-                    return Promise.resolve();
-                  } catch {
-                    return Promise.reject(new Error('请填写键值均为字符串的 JSON 对象'));
-                  }
-                },
-              },
-            ]}
-          >
-            <Input.TextArea rows={5} />
-          </Form.Item>
-          <Form.Item
-            name="category"
-            label="内容分类"
-            rules={[{ required: true, whitespace: true, max: 50 }]}
-          >
-            <AutoComplete
-              options={options}
-              filterOption={(input, option) => String(option?.value).includes(input)}
-              placeholder="选择或输入分类"
-              maxLength={50}
-            />
-          </Form.Item>
-          <Form.Item name="region" label="默认题材地区" rules={[{ required: true }]}>
-            <Select options={['国内', '国外'].map((value) => ({ value, label: value }))} />
-          </Form.Item>
-          <Form.Item name="topic_kind" label="选题类型" rules={[{ required: true }]}>
-            <Select options={['热点候选', '知识探索'].map((value) => ({ value, label: value }))} />
-          </Form.Item>
-          <Form.Item name="enabled" label="启用采集" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Form>
-      </Modal>
-      <Modal
-        title={`接口测试 · ${previewSource?.name ?? ''}`}
-        open={previewSource !== null}
-        onCancel={() => setPreviewSource(null)}
-        footer={<Button onClick={() => setPreviewSource(null)}>关闭</Button>}
-        width={700}
-      >
-        <Spin spinning={testing}>
-          <Space orientation="vertical" size={16} className="full-width">
-            <Text type="secondary">仅预览前 5 条，不保存到题库。同一来源每 30 秒可测试一次。</Text>
-            {testError && <Alert type="error" showIcon title={testError} />}
-            {preview && (
-              <>
-                <Alert
-                  type={preview.ok ? 'success' : 'error'}
-                  showIcon
-                  title={
-                    preview.ok ? `读取成功，发现 ${preview.item_count} 条有效条目` : '来源测试失败'
-                  }
-                  description={preview.error}
-                />
-                {preview.items.map((item) => (
-                  <Card key={item.url} size="small">
-                    <a href={item.url} target="_blank" rel="noreferrer">
-                      {item.title}
-                    </a>
-                    <div>
-                      <Text type="secondary">{formatTime(item.published_at)}</Text>
-                    </div>
-                  </Card>
-                ))}
-              </>
-            )}
-          </Space>
-        </Spin>
-      </Modal>
+      />
+      <InterfacePreviewModal
+        source={previewSource}
+        preview={preview}
+        testing={testing}
+        error={testError}
+        onClose={() => setPreviewSource(null)}
+      />
     </>
   );
 }

@@ -7,4 +7,10 @@ import App from './app/App';
 import { appTheme } from './app/theme';
 import './styles/index.css';
 
-createRoot(document.getElementById('root')!).render(<StrictMode><ConfigProvider locale={zhCN} theme={appTheme}><App/></ConfigProvider></StrictMode>);
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ConfigProvider locale={zhCN} theme={appTheme}>
+      <App />
+    </ConfigProvider>
+  </StrictMode>,
+);

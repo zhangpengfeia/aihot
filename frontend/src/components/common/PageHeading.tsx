@@ -1,10 +1,6 @@
-import { ReloadOutlined } from "@ant-design/icons";
-import {
-Button,
-Flex,
-Typography
-} from "antd";
-const {Title,Text,Paragraph}=Typography;
+import { ReloadOutlined } from '@ant-design/icons';
+import { Button, Flex, Typography } from 'antd';
+const { Title, Paragraph } = Typography;
 export function PageHeading({
   title,
   description,

@@ -1,22 +1,21 @@
-import {
-ArrowUpOutlined,
-BookOutlined,
-StarOutlined
-} from "@ant-design/icons";
-import type { TableProps } from "antd";
-import {
-Button,
-Grid,
-Space,
-Table,
-Tag,
-Typography
-} from "antd";
+import { ArrowUpOutlined, BookOutlined, StarOutlined } from '@ant-design/icons';
+import type { TableProps } from 'antd';
+import { Button, Grid, Space, Table, Tag, Typography } from 'antd';
 import type { ReactNode } from 'react';
 import { type Snapshot } from '../../../types/skills';
-const {Text,Paragraph}=Typography;
-export function RankingTable({items,loading,empty,onSelect}:{items:Snapshot[];loading:boolean;empty:ReactNode;onSelect:(id:number)=>void}){
-const screens=Grid.useBreakpoint();
+const { Text, Paragraph } = Typography;
+export function RankingTable({
+  items,
+  loading,
+  empty,
+  onSelect,
+}: {
+  items: Snapshot[];
+  loading: boolean;
+  empty: ReactNode;
+  onSelect: (id: number) => void;
+}) {
+  const screens = Grid.useBreakpoint();
   const columns: TableProps<Snapshot>['columns'] = [
     {
       title: '排名',
@@ -103,12 +102,15 @@ const screens=Grid.useBreakpoint();
     },
   ];
 
-return (<Table<Snapshot>
-                        columns={columns}
-                        dataSource={items}
-                        rowKey="id"
-                        loading={loading}
-                        pagination={false}
-                        scroll={{ x: 960 }}
-                        locale={{ emptyText: empty }}
-                      />);}
+  return (
+    <Table<Snapshot>
+      columns={columns}
+      dataSource={items}
+      rowKey="id"
+      loading={loading}
+      pagination={false}
+      scroll={{ x: 960 }}
+      locale={{ emptyText: empty }}
+    />
+  );
+}

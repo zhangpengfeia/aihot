@@ -14,8 +14,9 @@ from app.models import (
     KnowledgeTopic,
     ManagedKnowledgeSource,
 )
-from app.services.knowledge.management import active_sources, source_key
+from app.services.knowledge.management import active_sources
 from app.utils.time import time_slot, utcnow
+from app.utils.urls import source_key
 
 logger = logging.getLogger(__name__)
 

@@ -1,26 +1,26 @@
 import {
-Alert,
-Button,
-Card,
-Empty,
-Flex,
-Input,
-Popconfirm,
-Select,
-Space,
-Table,
-Tag,
-Typography,
-message
-} from "antd";
-import { useEffect,useState } from "react";
+  Alert,
+  Button,
+  Card,
+  Empty,
+  Flex,
+  Input,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
+import { useEffect, useState } from 'react';
 import { write } from '../../api/http';
 import { PageHeading as Heading } from '../../components/common/PageHeading';
-import { PersonalButton } from "../../components/workspace/PersonalActions";
+import { PersonalButton } from '../../components/workspace/PersonalActions';
 import { useResource } from '../../hooks/useResource';
 import { type PersonalItem } from '../../types/workspace';
 import { formatTime } from '../../utils/date';
-const {Title,Text,Paragraph}=Typography;
+const { Paragraph } = Typography;
 export function FavoritesPage({
   tick,
   onSelect,

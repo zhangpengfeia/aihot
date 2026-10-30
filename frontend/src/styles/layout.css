@@ -1,0 +1,92 @@
+/* 视觉样式由 Ant Design tokens 统一管理，此处仅处理布局和业务内容。 */
+body {
+  margin: 0;
+}
+.app-layout {
+  min-height: 100vh;
+}
+.app-sider {
+  position: fixed !important;
+  inset: 0 auto 0 0;
+  z-index: 20;
+}
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 96px;
+  padding: 24px;
+  color: #fff;
+}
+.brand-icon {
+  background: #2563eb;
+  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.brand strong {
+  display: block;
+  font-size: 22px;
+  letter-spacing: -0.5px;
+}
+.brand span:not(.anticon) {
+  font-size: 11px;
+  color: #9daec8;
+}
+.nav-label {
+  color: #7586a2;
+  font-size: 11px;
+  padding: 20px 24px 12px;
+  letter-spacing: 1px;
+}
+.app-sider .ant-menu {
+  border: none;
+  padding: 0 10px;
+}
+.app-sider .ant-menu-item {
+  margin-block: 7px;
+}
+.sider-footer {
+  position: absolute;
+  bottom: 28px;
+  padding: 0 24px;
+  color: #94a3b8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.sider-footer .ant-typography {
+  color: #c3d0e3;
+  font-size: 12px;
+}
+.sider-footer p {
+  margin-top: 10px;
+  font-size: 11px;
+}
+.main-layout {
+  margin-left: 224px;
+}
+.main-layout.collapsed {
+  margin-left: 72px;
+}
+.app-header {
+  padding: 0 32px;
+  height: 72px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e9edf4;
+}
+.app-header > .ant-space > .ant-space-item:first-child {
+  font-size: 21px;
+  color: #64748b;
+}
+.app-content {
+  padding: 32px;
+  width: 100%;
+  max-width: 1640px;
+  margin-inline: auto;
+}

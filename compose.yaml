@@ -3,7 +3,7 @@ services:
   init:
     build: ./backend
     env_file: backend/.env
-    command: ["python", "-m", "app.migrate"]
+    command: ["python", "-m", "app.runtime.migrations"]
     restart: "no"
   api:
     build: ./backend
@@ -15,7 +15,7 @@ services:
   worker:
     build: ./backend
     env_file: backend/.env
-    command: ["python", "-m", "app.worker"]
+    command: ["python", "-m", "app.runtime.github_worker"]
     depends_on:
       init:
         condition: service_completed_successfully
@@ -29,7 +29,7 @@ services:
   knowledge-worker:
     build: ./backend
     env_file: backend/.env
-    command: ["python", "-m", "app.knowledge_worker"]
+    command: ["python", "-m", "app.runtime.knowledge_worker"]
     depends_on:
       init:
         condition: service_completed_successfully

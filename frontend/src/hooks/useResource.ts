@@ -1,4 +1,4 @@
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 import { get } from '../api/http';
 export function useResource<T>(path: string, tick: number) {
   const [data, setData] = useState<T | null>(null);

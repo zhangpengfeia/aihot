@@ -1,4 +1,4 @@
-import type {Run,Snapshot} from './skills';
+import type { Run, Snapshot } from './skills';
 export interface Summary {
   current: Run | null;
   previous: Run | null;

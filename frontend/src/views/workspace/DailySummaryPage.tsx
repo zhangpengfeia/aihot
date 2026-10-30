@@ -1,22 +1,10 @@
-import {
-Alert,
-Button,
-Card,
-Col,
-Empty,
-Row,
-Space,
-Spin,
-Table,
-Tag,
-Typography
-} from "antd";
+import { Alert, Button, Card, Col, Empty, Row, Space, Spin, Table, Tag, Typography } from 'antd';
 import { PageHeading as Heading } from '../../components/common/PageHeading';
 import { useResource } from '../../hooks/useResource';
 import { type Snapshot } from '../../types/skills';
 import type { Summary } from '../../types/workspace-responses';
 import { formatTime } from '../../utils/date';
-const {Title,Text,Paragraph}=Typography;
+const { Text } = Typography;
 export function DailySummaryPage({
   tick,
   onSelect,

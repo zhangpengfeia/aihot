@@ -8,8 +8,8 @@ from html import unescape
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from xml.etree import ElementTree as ET
 
-from app.services.knowledge.management import source_key
-from app.services.knowledge.sources import FeedSource
+from app.core.sources import FeedSource
+from app.utils.urls import source_key
 
 ANGLE_TEMPLATES = {
     "科技": "用一个实际场景解释“{title}”：它解决了什么问题？和已有方法相比改变了哪一步？用演示展示原理，结论以原文为准。",

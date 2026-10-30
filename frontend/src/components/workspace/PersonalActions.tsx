@@ -1,8 +1,8 @@
-import { PlusOutlined,StarOutlined } from "@ant-design/icons";
-import { Alert,Button,Input,Modal,Space,Switch,Typography,message } from "antd";
-import { useState } from "react";
-import { get,write } from '../../api/http';
-import { type CreationCard,type PersonalItem } from '../../types/workspace';
+import { PlusOutlined, StarOutlined } from '@ant-design/icons';
+import { Alert, Button, Input, Modal, Space, Switch, Typography, message } from 'antd';
+import { useState } from 'react';
+import { get, write } from '../../api/http';
+import { type CreationCard, type PersonalItem } from '../../types/workspace';
 export function PersonalButton({
   kind,
   targetId,

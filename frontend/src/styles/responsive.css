@@ -1,0 +1,74 @@
+@media (max-width: 991px) {
+  .brand {
+    padding: 18px;
+  }
+  .sider-footer {
+    padding: 0 30px;
+  }
+  .app-sider .ant-menu {
+    padding: 0;
+  }
+  .app-header {
+    padding-inline: 20px;
+  }
+  .app-content {
+    padding: 24px;
+  }
+}
+@media (max-width: 600px) {
+  .app-content {
+    padding: 20px 12px;
+  }
+  .app-header {
+    padding-inline: 14px;
+  }
+  .page-heading h2.ant-typography {
+    font-size: 21px;
+  }
+  .ranking-card .ant-card-head-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding-block: 15px;
+  }
+  .ranking-card .ant-card-head {
+    padding-inline: 16px;
+  }
+  .batch-filter,
+  .filter-field {
+    min-width: 0;
+    width: 100%;
+  }
+  .update-time {
+    font-size: 20px;
+  }
+  .board-note {
+    padding: 12px 16px;
+  }
+}
+
+/* 收缩状态由 React 控制，桌面与移动端均允许手动切换。 */
+.sider-toggle.ant-btn {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  width: calc(100% - 32px);
+  color: #b7c6dd;
+  border: 1px solid #2b3c56;
+}
+.sider-toggle.ant-btn:hover {
+  color: #fff !important;
+  background: #1d2c46 !important;
+}
+.sider-footer {
+  bottom: 68px;
+}
+.ant-layout-sider-collapsed .brand {
+  padding-inline: 18px;
+}
+.ant-layout-sider-collapsed .sider-footer {
+  padding-inline: 30px;
+}
+.app-content > .full-width > .ant-space-item .ant-row > .ant-col > .ant-card {
+  height: 100%;
+}

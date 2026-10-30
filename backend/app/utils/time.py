@@ -12,7 +12,6 @@ def time_slot(now: datetime) -> datetime:
     return now.replace(minute=now.minute // 30 * 30, second=0, microsecond=0)
 
 
-
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 

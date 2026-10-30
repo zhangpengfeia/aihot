@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
+from app.core.sources import FeedSource
 from app.infrastructure.feed_http import validate_feed_url
-from app.services.knowledge.sources import FeedSource
 
 
 class SourceCreate(FeedSource):

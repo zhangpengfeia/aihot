@@ -1,0 +1,30 @@
+.source-url {
+  max-width: 280px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.app-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+.app-sider .ant-menu-root {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.brand,
+.nav-label {
+  flex-shrink: 0;
+}
+.app-sider .sider-footer {
+  position: static;
+  flex-shrink: 0;
+  padding: 16px 24px 12px;
+}
+.app-sider .sider-toggle.ant-btn {
+  position: static;
+  flex-shrink: 0;
+  margin: 0 16px 16px;
+}

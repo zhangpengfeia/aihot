@@ -11,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import Settings
 from app.core.database import Base, get_session
+from app.core.sources import FeedSource
 from app.main import app
 from app.models import KnowledgeSourceState, KnowledgeTopic
 from app.services.knowledge.categories import get_category_catalog
@@ -21,7 +22,6 @@ from app.services.knowledge.normalization import (
     parse_date,
     parse_feed,
 )
-from app.services.knowledge.sources import FeedSource
 from app.services.skills.metadata import extract_metadata
 
 RSS = b"""<?xml version="1.0"?><rss version="2.0"><channel><item>

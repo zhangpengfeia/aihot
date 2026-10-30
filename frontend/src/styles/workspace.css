@@ -1,0 +1,38 @@
+.creation-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.creation-column {
+  padding: 14px;
+  background: #eef2f7;
+  border-radius: 10px;
+  min-height: 240px;
+  border-top: 3px solid #94a3b8;
+}
+.creation-column-1 {
+  border-top-color: #3b82f6;
+}
+.creation-column-2 {
+  border-top-color: #f59e0b;
+}
+.creation-column-3 {
+  border-top-color: #22c55e;
+}
+.creation-column-heading {
+  margin-bottom: 16px;
+}
+.creation-column .ant-card {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1400px) {
+  .creation-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .creation-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

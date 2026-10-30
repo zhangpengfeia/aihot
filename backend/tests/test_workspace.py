@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_session
+from app.core.sources import FeedSource
 from app.main import app
 from app.models import CreationCard, PersonalItem, Run, Snapshot
 from app.runtime.migrations import migrate
 from app.services.knowledge.collector import save_topics
 from app.services.knowledge.normalization import parse_feed
-from app.services.knowledge.sources import FeedSource
 from app.services.skills.collector import persist
 
 AT = datetime(2026, 10, 28, 18)

@@ -22,13 +22,9 @@ from app.schemas.knowledge import (
     SourceUpdate,
 )
 from app.services.knowledge.adapters import collect_source
-from app.services.knowledge.management import (
-    category_rules,
-    managed_feed,
-    resolve_category,
-    source_key,
-)
+from app.services.knowledge.management import category_rules, managed_feed, resolve_category
 from app.utils.time import iso, utcnow
+from app.utils.urls import source_key
 
 router = APIRouter(prefix="/api/knowledge/manage", dependencies=[Depends(same_origin_writes)])
 

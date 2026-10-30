@@ -1,24 +1,24 @@
 import {
-Alert,
-Button,
-Card,
-Flex,
-Input,
-Modal,
-Popconfirm,
-Select,
-Space,
-Spin,
-Tag,
-Typography,
-message
-} from "antd";
-import { useState } from "react";
+  Alert,
+  Button,
+  Card,
+  Flex,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
+import { useState } from 'react';
 import { write } from '../../api/http';
 import { PageHeading as Heading } from '../../components/common/PageHeading';
 import { useResource } from '../../hooks/useResource';
-import { CREATION_STAGES,type CreationCard } from '../../types/workspace';
-const {Title,Text,Paragraph}=Typography;
+import { CREATION_STAGES, type CreationCard } from '../../types/workspace';
+const { Text, Paragraph } = Typography;
 export function CreationBoardPage({ tick }: { tick: number }) {
   const [q, setQ] = useState('');
   const resource = useResource<{ items: CreationCard[] }>(

@@ -1,18 +1,13 @@
 """来源初始化与分类映射的共享业务规则。"""
 
-import hashlib
-
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.sources import FeedSource
 from app.models import CategoryEditLock, KnowledgeCategoryRule, ManagedKnowledgeSource
-from app.services.knowledge.sources import FeedSource
 from app.utils.time import utcnow
-
-
-def source_key(url):
-    return hashlib.sha256(str(url).encode()).hexdigest()
+from app.utils.urls import source_key
 
 
 def seed_sources(session: Session, settings):

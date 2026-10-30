@@ -1,25 +1,25 @@
-import { BookOutlined } from "@ant-design/icons";
-import type { TableProps } from "antd";
+import { BookOutlined } from '@ant-design/icons';
+import type { TableProps } from 'antd';
 import {
-Alert,
-Button,
-Card,
-Empty,
-Flex,
-Input,
-Select,
-Space,
-Table,
-Tag,
-Typography,
-} from "antd";
-import { useEffect,useState } from "react";
+  Alert,
+  Button,
+  Card,
+  Empty,
+  Flex,
+  Input,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
+import { useEffect, useState } from 'react';
 import { get } from '../../api/http';
 import { type Snapshot } from '../../types/skills';
 import { formatTime } from '../../utils/date';
 const { Paragraph, Text } = Typography;
 export const SKILL_CATEGORIES = ['脚本写作', '配音', '字幕', '动画', '剪辑', '其他'];
-export default function SkillLibrary({
+export default function SkillLibraryPage({
   onSelect,
   tick,
 }: {
