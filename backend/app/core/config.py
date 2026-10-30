@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     candidate_limit: int = Field(default=200, ge=20, le=1000)
     tracked_limit: int = Field(default=200, ge=20, le=1000)
     request_interval: float = Field(default=2.1, ge=0)
+    # 十进制 GB；控制有效数据估算量，不等于 MySQL 文件系统配额。
+    database_max_size_gb: float = Field(default=5, ge=0.000001, allow_inf_nan=False)
+    database_cleanup_target_ratio: float = Field(default=0.9, gt=0, lt=1)
 
     @property
     def database_url(self) -> URL:

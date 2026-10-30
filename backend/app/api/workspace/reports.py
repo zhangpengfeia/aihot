@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import same_origin_writes
+from app.core.config import get_settings
 from app.core.database import get_session
 from app.models import (
     KnowledgeSourceState,
@@ -13,6 +14,7 @@ from app.models import (
     Snapshot,
 )
 from app.runtime.github_worker import next_collection_at
+from app.services.storage import storage_status
 from app.utils.time import iso, utcnow
 
 router = APIRouter(prefix="/api/workspace", dependencies=[Depends(same_origin_writes)])
@@ -112,6 +114,7 @@ def collection_status(db: Session = Depends(get_session)):
     return {
         "server_time": iso(now),
         "timezone": "Asia/Shanghai",
+        "storage": storage_status(db, get_settings()),
         "schedule": "每天 00:00",
         "next_scheduled_at": iso(next_collection_at(now)),
         "latest": run_data(recent[0]) if recent else None,

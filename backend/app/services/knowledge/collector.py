@@ -15,6 +15,7 @@ from app.models import (
     ManagedKnowledgeSource,
 )
 from app.services.knowledge.management import active_sources
+from app.services.storage import StorageLimitError, incoming_size, storage_guard
 from app.utils.time import time_slot, utcnow
 from app.utils.urls import source_key
 
@@ -82,6 +83,8 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
             return stats
         http = client or feed_client()
         try:
+            with storage_guard(engine, settings):
+                pass
             with factory() as session:
                 sources = active_sources(session, settings)
             for source in sources:
@@ -108,7 +111,10 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
                     records = collect_source(source, lambda url: fetch_feed(url, http))
                     if not records:
                         raise ValueError("订阅源中没有有效条目")
-                    with factory.begin() as session:
+                    with (
+                        storage_guard(engine, settings, incoming_size(records)),
+                        factory.begin() as session,
+                    ):
                         added = save_topics(session, records, now)
                         state = session.get(KnowledgeSourceState, key) or KnowledgeSourceState(
                             source_key=key
@@ -130,7 +136,7 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
                     logger.info(
                         "接口采集完成：%s，读取 %s 条，新增 %s 条", source.name, len(records), added
                     )
-                except SQLAlchemyError:
+                except (SQLAlchemyError, StorageLimitError):
                     # 数据库故障不算来源故障；事务已回滚，停止本轮等待下次重连。
                     raise
                 except Exception as exc:

@@ -59,7 +59,7 @@ def personal_get(kind: TargetKind, target_id: int, db: Session = Depends(get_ses
 def personal_save(
     kind: TargetKind, target_id: int, body: PersonalWrite, db: Session = Depends(get_session)
 ):
-    target_data(db, kind, target_id)
+    target_data(db, kind, target_id, for_update=True)
     query = select(PersonalItem).where(
         PersonalItem.target_kind == kind, PersonalItem.target_id == target_id
     )

@@ -82,9 +82,17 @@ export function SkillRankingPage({
               : '发现值得关注的 Agent Skills，整理下一条视频的选题与资料。'}
           </Paragraph>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-          刷新数据
-        </Button>
+        <Flex align="center" justify="flex-end" gap={12} wrap>
+          {latestRun && !history && (
+            <Text type="secondary" className="collection-status">
+              <Badge status={statusColors[latestRun.status]} />
+              最近任务：{formatTime(latestRun.slot)} · {statusLabels[latestRun.status]}
+            </Text>
+          )}
+          <Button icon={<ReloadOutlined />} onClick={onRefresh}>
+            刷新数据
+          </Button>
+        </Flex>
       </Flex>
       <Space orientation="vertical" size={16} className="full-width">
         {runError && (
@@ -231,12 +239,6 @@ export function SkillRankingPage({
             <RankingTable items={board.items} loading={loading} empty={empty} onSelect={onSelect} />
           )}
         </Card>
-        {latestRun && !history && (
-          <Text type="secondary" className="collection-status">
-            <Badge status={statusColors[latestRun.status]} />
-            最近任务：{formatTime(latestRun.slot)} · {statusLabels[latestRun.status]}
-          </Text>
-        )}
       </Space>
     </>
   );

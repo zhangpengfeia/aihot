@@ -32,7 +32,7 @@ def cards(q: str = Query("", max_length=100), db: Session = Depends(get_session)
 
 @router.post("/cards")
 def card_create(body: CardCreate, db: Session = Depends(get_session)):
-    target_data(db, "topic", body.topic_id)
+    target_data(db, "topic", body.topic_id, for_update=True)
     query = select(CreationCard).where(CreationCard.topic_id == body.topic_id)
     card = db.scalar(query)
     if not card:

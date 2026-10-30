@@ -117,6 +117,9 @@
 .collection-status {
   font-size: 12px;
 }
+.page-heading .collection-status {
+  margin: 0;
+}
 .collection-status .ant-badge {
   margin-right: 7px;
 }

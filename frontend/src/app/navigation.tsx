@@ -32,7 +32,7 @@ export const navigationItems: MenuProps['items'] = [
   {
     key: 'knowledge-group',
     icon: <BulbOutlined />,
-    label: '知识选',
+    label: '知识库',
     children: [
       { key: 'knowledge', label: '知识选题库' },
       { key: 'sources', label: '采集接口管理' },

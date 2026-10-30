@@ -8,6 +8,14 @@ export interface Summary {
 }
 
 export interface Status {
+  storage: {
+    used_bytes: number;
+    limit_bytes: number;
+    cleanup_target_bytes: number;
+    usage_percent: number;
+    over_limit: boolean;
+    measurement: 'estimated_live_data';
+  };
   schedule: string;
   next_scheduled_at: string;
   server_time: string;

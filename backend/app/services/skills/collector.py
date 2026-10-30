@@ -11,6 +11,7 @@ from app.core.config import Settings
 from app.infrastructure.github import GitHubClient, classify
 from app.models import Ranking, Repository, Run, Snapshot
 from app.services.skills.metadata import extract_metadata
+from app.services.storage import incoming_size, storage_guard
 from app.utils.time import time_slot, utcnow
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,8 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
             )
             github = client or GitHubClient(settings)
             try:
+                with storage_guard(engine, settings):
+                    pass
                 discovered = github.discover(settings.search_queries)
                 # 选择累计热度候选及最近更新候选，二者各占一半后去重。
                 half = settings.candidate_limit // 2
@@ -182,8 +185,9 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
                 if not records:
                     raise RuntimeError("本轮未找到匹配项目，保留上一期成功榜单")
                 logger.info("GitHub 开始入库：批次=%s，待保存项目=%s", run_id, len(records))
-                with factory.begin() as session:
-                    persist(session, run_id, len(pool), records)
+                with storage_guard(engine, settings, incoming_size(records)):
+                    with factory.begin() as session:
+                        persist(session, run_id, len(pool), records)
                 logger.info(
                     "GitHub 采集成功：批次=%s，候选=%s，已检查=%s，已入库=%s，未匹配=%s，跳过=%s，耗时=%.1f秒",
                     run_id,

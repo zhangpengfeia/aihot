@@ -1,4 +1,4 @@
-import { Alert, Card, Col, Row, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { Alert, Card, Col, Progress, Row, Space, Statistic, Table, Tag, Typography } from 'antd';
 import { PageHeading as Heading } from '../../components/common/PageHeading';
 import { useResource } from '../../hooks/useResource';
 import { type Run } from '../../types/skills';
@@ -47,6 +47,24 @@ export function CollectionStatusPage({ tick }: { tick: number }) {
             <Card title="最近成功完成">{formatTime(data?.last_success?.finished_at ?? null)}</Card>
           </Col>
         </Row>
+        {data?.storage && (
+          <Card title="采集数据存储">
+            <Text>
+              估算已用 {(data.storage.used_bytes / 1_000_000_000).toFixed(3)} GB / 上限{' '}
+              {data.storage.limit_bytes / 1_000_000_000} GB
+            </Text>
+            <Progress
+              percent={data.storage.usage_percent}
+              status={data.storage.over_limit ? 'exception' : 'normal'}
+            />
+            <Paragraph type="secondary">
+              采集时达到阈值自动删除最旧数据，目标降至{' '}
+              {Math.round((data.storage.cleanup_target_bytes / data.storage.limit_bytes) * 100)}%。
+              保留收藏、备注、创作引用、各项目最新资料和近期榜单；空间仍不足时暂停采集。
+              容量为有效数据及行索引开销估算，数据库文件不会随删除立即缩小。
+            </Paragraph>
+          </Card>
+        )}
         <Card title="最近一次尝试">
           <Text>
             {data?.latest

@@ -11,7 +11,7 @@ from app.services.knowledge.management import category_rules, resolve_category
 from app.utils.time import iso
 
 
-def target_data(db, kind, target_id):
+def target_data(db, kind, target_id, *, for_update=False):
     if kind == "repository":
         target = db.scalar(
             select(Snapshot)
@@ -26,7 +26,10 @@ def target_data(db, kind, target_id):
                 "snapshot_id": target.id,
             }
     else:
-        target = db.get(KnowledgeTopic, target_id)
+        query = select(KnowledgeTopic).where(KnowledgeTopic.id == target_id)
+        if for_update:
+            query = query.with_for_update()
+        target = db.scalar(query)
         if target:
             return {"title": target.title, "url": target.source_url, "topic_id": target.id}
     raise HTTPException(404, "未找到原始项目或选题")
