@@ -13,4 +13,5 @@ printf '%s  %s\n' "$checksum" "$archive" | sha256sum --check --status
 directory=$root/releases/$release
 mkdir -p "$directory"
 tar -xzf "$archive" --no-same-owner -C "$directory"
+bash "$directory/deploy/bootstrap.sh" "$root"
 bash "$directory/deploy/deploy.sh" "$root" "$release"

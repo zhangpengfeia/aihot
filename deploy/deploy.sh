@@ -13,9 +13,17 @@ command -v curl >/dev/null
 command -v python3 >/dev/null
 exec 9>"$root/deploy.lock"
 flock -n 9 || { echo 'Another deployment is running' >&2; exit 1; }
+missing=0
 for file in backend.env site.env tunnel.env ssh/id_ed25519 ssh/known_hosts; do
-  [[ -s $root/shared/$file ]] || { echo "Missing server configuration: shared/$file" >&2; exit 1; }
+  if [[ ! -s $root/shared/$file ]]; then
+    echo "Missing server configuration: $root/shared/$file" >&2
+    missing=1
+  fi
 done
+if (( missing )); then
+  echo "First-time setup is incomplete. Fill $root/shared/backend.env, site.env and tunnel.env; install the database tunnel private key and verified known_hosts in $root/shared/ssh/. Then rerun the workflow." >&2
+  exit 78
+fi
 chmod 700 "$root/shared" "$root/shared/ssh"
 chmod 600 "$root/shared/"*.env "$root/shared/ssh/id_ed25519" "$root/shared/ssh/known_hosts"
 export AIHOT_ROOT=$root AIHOT_RELEASE=$release AIHOT_RELEASE_DIR=$release_dir

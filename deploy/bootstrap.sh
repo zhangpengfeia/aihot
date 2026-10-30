@@ -4,9 +4,10 @@ umask 077
 root=${1:-/opt/aihot}
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 [[ $root =~ ^/[a-zA-Z0-9_/-]+$ && $root != / && $root != *..* ]] || { echo 'Invalid deployment root' >&2; exit 1; }
-command -v docker >/dev/null
+for tool in docker flock curl python3 tar; do
+  command -v "$tool" >/dev/null || { echo "Missing server dependency: $tool. Install it before retrying deployment." >&2; exit 1; }
+done
 docker compose version
-command -v flock >/dev/null
 mkdir -p "$root"/{shared/ssh,incoming,releases}
 chmod 700 "$root/shared" "$root/shared/ssh" "$root/incoming"
 for entry in backend site tunnel; do

@@ -56,6 +56,59 @@ class LogBudgetTests(unittest.TestCase):
             check_logs.inspect_budget()
 
 
+class BootstrapTests(unittest.TestCase):
+    def test_bootstrap_is_repeatable_and_preserves_existing_configuration(self):
+        with tempfile.TemporaryDirectory(prefix="aihot-bootstrap-") as directory:
+            root = Path(directory)
+            binary = root / "bin"
+            binary.mkdir()
+            for tool in ("docker", "flock"):
+                fake = binary / tool
+                fake.write_text("#!/bin/sh\nexit 0\n")
+                fake.chmod(0o700)
+            env = {**os.environ, "PATH": f"{binary}:{os.environ['PATH']}"}
+            command = ["bash", str(DEPLOY / "bootstrap.sh"), str(root)]
+            subprocess.run(command, env=env, check=True, capture_output=True)
+            backend = root / "shared/backend.env"
+            backend.write_text("KEEP_EXISTING_CONFIGURATION=yes\n")
+            subprocess.run(command, env=env, check=True, capture_output=True)
+            self.assertEqual(backend.read_text(), "KEEP_EXISTING_CONFIGURATION=yes\n")
+            self.assertTrue((root / "shared/site.env").is_file())
+            self.assertTrue((root / "shared/tunnel.env").is_file())
+            self.assertTrue((root / "incoming").is_dir())
+            self.assertEqual((root / "shared").stat().st_mode & 0o777, 0o700)
+
+    def test_missing_configuration_lists_all_files_and_stops_before_docker(self):
+        with tempfile.TemporaryDirectory(prefix="aihot-missing-") as directory:
+            root = Path(directory)
+            release = "a" * 40
+            deploy = root / "releases" / release / "deploy"
+            deploy.mkdir(parents=True)
+            (deploy / "compose.prod.yaml").write_text("services: {}\n")
+            binary = root / "bin"
+            binary.mkdir()
+            fake = binary / "flock"
+            fake.write_text("#!/bin/sh\nexit 0\n")
+            fake.chmod(0o700)
+            result = subprocess.run(
+                ["bash", str(DEPLOY / "deploy.sh"), str(root), release],
+                env={**os.environ, "PATH": f"{binary}:{os.environ['PATH']}"},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 78)
+            for filename in (
+                "backend.env",
+                "site.env",
+                "tunnel.env",
+                "ssh/id_ed25519",
+                "ssh/known_hosts",
+            ):
+                self.assertIn(f"shared/{filename}", result.stderr)
+            self.assertIn("First-time setup is incomplete", result.stderr)
+
+
 class RollbackTests(unittest.TestCase):
     def test_failed_migration_restores_previous_and_keeps_current(self):
         with tempfile.TemporaryDirectory(prefix="aihot-deploy-") as directory:

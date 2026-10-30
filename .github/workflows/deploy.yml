@@ -84,13 +84,21 @@ jobs:
           [[ -n $DEPLOY_SSH_KEY && -n $DEPLOY_KNOWN_HOSTS ]] || { echo 'Configure DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS secrets'; exit 1; }
           ssh_dir=$(mktemp -d "$RUNNER_TEMP/aihot-ssh.XXXXXX")
           archive="$RUNNER_TEMP/aihot-$GITHUB_SHA.tar.gz"
-          trap 'rm -rf -- "$ssh_dir"; rm -f -- "$archive"' EXIT
+          stage='prepare SSH credentials'
+          trap 'result=$?; if (( result != 0 )); then printf "Deployment failed during: %s (exit %s)\n" "$stage" "$result" >&2; fi; rm -rf -- "$ssh_dir"; rm -f -- "$archive"; exit "$result"' EXIT
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$ssh_dir/id_ed25519"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
           opts=(-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$ssh_dir/id_ed25519")
           target="$DEPLOY_USER@$DEPLOY_HOST"
+          stage='package fixed commit'
           git archive --format=tar.gz --output "$archive" "$GITHUB_SHA"
           checksum=$(sha256sum "$archive" | cut -d ' ' -f 1)
-          ssh "${opts[@]}" -p "$DEPLOY_PORT" "$target" "test -d '$DEPLOY_ROOT/shared' && mkdir -p '$DEPLOY_ROOT/incoming' && chmod 700 '$DEPLOY_ROOT/incoming'"
+          stage='prepare server upload directory'
+          echo "[deploy] $stage"
+          ssh "${opts[@]}" -p "$DEPLOY_PORT" "$target" "umask 077; mkdir -p '$DEPLOY_ROOT/incoming' && chmod 700 '$DEPLOY_ROOT/incoming'"
+          stage='upload release archive'
+          echo "[deploy] $stage"
           scp "${opts[@]}" -P "$DEPLOY_PORT" "$archive" "$target:$DEPLOY_ROOT/incoming/$GITHUB_SHA.tar.gz"
+          stage='initialize server configuration and deploy'
+          echo "[deploy] $stage"
           ssh "${opts[@]}" -p "$DEPLOY_PORT" "$target" "bash -s -- '$DEPLOY_ROOT' '$GITHUB_SHA' '$checksum'" < deploy/receive.sh
