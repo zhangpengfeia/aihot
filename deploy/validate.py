@@ -73,6 +73,11 @@ def validate():
     for name in ("api", "init", "worker", "knowledge-worker"):
         assert services[name]["environment"]["MYSQL_HOST"] == "tunnel"
         assert services[name]["environment"]["MYSQL_PORT"] == "3306"
+        assert services[name]["tmpfs"] == ["/tmp:size=64m,mode=1777"], name
+    assert services["tunnel"]["tmpfs"] == ["/tmp:size=8m,mode=1777"]
+    for name, service in services.items():
+        for mount in service.get("tmpfs", []):
+            assert mount.split(":", 1)[0].startswith("/"), f"Invalid tmpfs path: {name}"
     assert services["worker"]["command"] == [
         "python",
         "-m",
