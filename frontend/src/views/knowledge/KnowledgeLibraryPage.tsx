@@ -34,7 +34,8 @@ export default function KnowledgeLibraryPage() {
             <Tag color="purple">内容灵感</Tag>
           </Space>
           <Paragraph type="secondary">
-            融合国内外 API、RSS 与学术资料，覆盖科技、商业、文化、教育、健康、心理、环境等题材。
+            融合国内外 API、RSS
+            与学术资料，覆盖热门趋势和考古、深海生物、声音景观等小众题材，支持细分标签搜索。
           </Paragraph>
         </div>
         <Button icon={<ReloadOutlined />} loading={loading} onClick={() => refresh()}>
@@ -50,7 +51,7 @@ export default function KnowledgeLibraryPage() {
           </Col>
           <Col xs={24} md={8}>
             <Card>
-              <Statistic title="内容分类数量" value={meta.categories.length} />
+              <Statistic title="可用细分标签" value={meta.tag_count ?? 0} />
             </Card>
           </Col>
           <Col xs={24} md={8}>

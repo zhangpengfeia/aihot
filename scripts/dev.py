@@ -16,7 +16,7 @@ def preflight() -> None:
     """启动前统一检查，避免只启动了一半服务才发现配置缺失。"""
     if not (ROOT / "backend/.env").is_file():
         raise RuntimeError(
-            "请复制 backend/.env.example 为 backend/.env，填写数据库和 GitHub 配置"
+            "请复制 backend/.env.example 为 backend/.env，填写数据库配置"
         )
     if (
         not shutil.which("npm")
@@ -31,6 +31,21 @@ def preflight() -> None:
                 raise RuntimeError(
                     f"端口 {port} 不可用，请先停止原来的服务：{exc}"
                 ) from exc
+
+    # 使用与 API 相同的配置，只探测 TCP，不读取或输出数据库密码。
+    sys.path.insert(0, str(ROOT / "backend"))
+    from app.core.config import Settings
+
+    settings = Settings(_env_file=ROOT / "backend/.env")
+    try:
+        with socket.create_connection((settings.mysql_host, settings.mysql_port), timeout=3):
+            pass
+    except OSError as exc:
+        raise RuntimeError(
+            f"无法连接 MySQL：{settings.mysql_host}:{settings.mysql_port}。"
+            "请核对 backend/.env 中 MYSQL_HOST/MYSQL_PORT，"
+            "确认服务器 MySQL 已启动且允许当前客户端 IP 直连。"
+        ) from exc
 
 
 def stop(children: list[subprocess.Popen]) -> None:
@@ -85,16 +100,6 @@ def main() -> int:
                 "frontend",
                 ["npm", "run", "dev", "--", "--port", "5173", "--strictPort"],
             ),
-            (
-                "GitHub 定时采集",
-                "backend",
-                [sys.executable, "-m", "app.runtime.github_worker"],
-            ),
-            (
-                "知识定时采集",
-                "backend",
-                [sys.executable, "-m", "app.runtime.knowledge_worker"],
-            ),
         ]
         for name, directory, command in services:
             if stopping:
@@ -108,7 +113,7 @@ def main() -> int:
             flush=True,
         )
         print(
-            "按 Ctrl+C 停止本次启动的全部服务。数据库 SSH 隧道请保持运行。", flush=True
+            "本地启动不执行采集。按 Ctrl+C 停止前端和 API。", flush=True
         )
         while not stopping:
             for (name, _, _), child in zip(services, children, strict=True):

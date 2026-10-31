@@ -35,7 +35,9 @@ def save_topics(session: Session, records: list[dict], now: datetime) -> int:
     }
     added = 0
     for raw in records:
-        record = {k: v for k, v in raw.items() if k not in {"channel", "score"}}
+        record = {
+            k: v for k, v in raw.items() if k not in {"channel", "score", "hot_rank", "score_label"}
+        }
         entity = entities.get(record["url_hash"])
         if entity is None:
             entity = KnowledgeTopic(**record, collected_at=now, last_seen=now)
@@ -69,17 +71,43 @@ def save_topics(session: Session, records: list[dict], now: datetime) -> int:
         citation.source_name, citation.channel = raw["source_name"], raw.get("channel", "rss")
         citation.score, citation.observed_at = raw.get("score"), now
     session.flush()
+    from app.models import HotListSnapshot
+
+    groups = {}
+    for row in records:
+        if row.get("channel") == "hotlist":
+            groups.setdefault(row["feed_source_key"], []).append(row)
+    for key, rows in groups.items():
+        snapshot = session.get(HotListSnapshot, key)
+        if snapshot is None:
+            snapshot = HotListSnapshot(source_key=key)
+            session.add(snapshot)
+        snapshot.observed_at = now
+        snapshot.entries = [
+            {
+                "id": entities[row["url_hash"]].id,
+                "title": row["title"],
+                "source_url": row["source_url"],
+                "score": row.get("score"),
+                "rank": row.get("hot_rank", index + 1),
+                "score_label": row.get("score_label"),
+            }
+            for index, row in enumerate(rows)
+        ]
     return added
 
 
-def collect_knowledge(settings, engine=None, client=None) -> dict:
+def collect_knowledge(settings, engine=None, client=None, progress=None) -> dict:
     from app.core.database import get_engine
 
+    progress = progress or (lambda percent, message: None)
     engine = engine or get_engine()
     stats = {"sources": 0, "failed": 0, "added": 0}
     factory = sessionmaker(engine, expire_on_commit=False)
     with engine.connect() as lock:
         if lock.scalar(text("SELECT GET_LOCK('aihot.knowledge', 0)")) != 1:
+            stats["skipped"] = True
+            progress(0, "跳过：已有知识采集任务正在执行")
             return stats
         http = client or feed_client()
         try:
@@ -87,7 +115,11 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
                 pass
             with factory() as session:
                 sources = active_sources(session, settings)
-            for source in sources:
+            for index, source in enumerate(sources):
+                progress(
+                    int(index / len(sources) * 95),
+                    f"正在处理 {index + 1}/{len(sources)}：{source.name}",
+                )
                 key = source_key(source.url)
                 now = utcnow()
                 with factory() as session:
@@ -97,6 +129,10 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
                         )
                     )
                     if configured is not None and not configured.enabled:
+                        progress(
+                            int((index + 1) / len(sources) * 95),
+                            f"跳过：{source.name}（停用或当前窗口已完成）",
+                        )
                         continue
                     state = session.get(KnowledgeSourceState, key)
                     if (
@@ -104,6 +140,10 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
                         and state.last_success
                         and time_slot(state.last_success) == time_slot(now)
                     ):
+                        progress(
+                            int((index + 1) / len(sources) * 95),
+                            f"跳过：{source.name}（停用或当前窗口已完成）",
+                        )
                         continue
                 try:
                     from app.services.knowledge.adapters import collect_source
@@ -133,6 +173,10 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
                         session.add(state)
                     stats["sources"] += 1
                     stats["added"] += added
+                    progress(
+                        int((index + 1) / len(sources) * 95),
+                        f"完成：{source.name}，读取 {len(records)} 条，新增 {added} 条",
+                    )
                     logger.info(
                         "接口采集完成：%s，读取 %s 条，新增 %s 条", source.name, len(records), added
                     )
@@ -157,6 +201,10 @@ def collect_knowledge(settings, engine=None, client=None) -> dict:
                         )
                         session.add(state)
                     stats["failed"] += 1
+                    progress(
+                        int((index + 1) / len(sources) * 95),
+                        f"失败：{source.name}（{type(exc).__name__}）",
+                    )
         finally:
             if client is None:
                 http.close()

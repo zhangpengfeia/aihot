@@ -4,7 +4,7 @@ import { useRefreshTick } from '../../../hooks/useRefreshTick';
 import type { Meta, Topic } from '../../../types/knowledge';
 /** 知识列表的筛选、分页和刷新状态，视图仅负责渲染。 */
 export function useKnowledgeTopics() {
-  const [category, setCategory] = useState<string>();
+  const [labels, setLabels] = useState<string[]>([]);
   const [kind, setKind] = useState<string>();
   const [region, setRegion] = useState<string>();
   const [q, setQ] = useState('');
@@ -25,7 +25,7 @@ export function useKnowledgeTopics() {
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page), page_size: String(pageSize), q });
-    if (category) params.set('category', category);
+    labels.forEach((label) => params.append('labels', label));
     if (sourceId) params.set('source_id', String(sourceId));
     params.set('sort_by', sortBy);
     if (region) params.set('region', region);
@@ -48,10 +48,10 @@ export function useKnowledgeTopics() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [page, pageSize, sourceId, sortBy, category, kind, region, q, day, tick]);
+  }, [page, pageSize, sourceId, sortBy, labels, kind, region, q, day, tick]);
   return {
-    category,
-    setCategory,
+    labels,
+    setLabels,
     kind,
     setKind,
     region,

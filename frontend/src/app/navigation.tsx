@@ -1,12 +1,8 @@
-import {
-  BookOutlined,
-  BulbOutlined,
-  ClockCircleOutlined,
-  FireOutlined,
-  StarOutlined,
-} from '@ant-design/icons';
+import { BookOutlined, BulbOutlined, FireOutlined, StarOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 export type ViewKey =
+  | 'hotlists'
+  | 'users'
   | 'library'
   | 'today'
   | 'history'
@@ -35,19 +31,23 @@ export const navigationItems: MenuProps['items'] = [
     label: '知识库',
     children: [
       { key: 'knowledge', label: '知识选题库' },
+      { key: 'hotlists', label: '全网热搜' },
       { key: 'sources', label: '采集接口管理' },
     ],
   },
-  { key: 'favorites', icon: <StarOutlined />, label: '收藏与个人备注' },
-  { key: 'status', icon: <ClockCircleOutlined />, label: '采集状态面板' },
   {
     key: 'creator-center',
     icon: <BulbOutlined />,
     label: '创作者中心',
-    children: [{ key: 'creation', label: '选题创作看板' }],
+    children: [
+      { key: 'favorites', icon: <StarOutlined />, label: '收藏与个人备注' },
+      { key: 'creation', label: '选题创作看板' },
+    ],
   },
 ];
 export const viewLabels: Record<ViewKey, string> = {
+  hotlists: '知识库 / 全网热搜',
+  users: '用户管理',
   library: 'Skill 库 / 项目资料',
   today: 'Skill 库 / 今日热榜',
   history: 'Skill 库 / 历史热榜',

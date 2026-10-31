@@ -1,3 +1,4 @@
+import { AuthProvider } from './app/auth';
 import { ConfigProvider } from 'antd';
 import 'antd/dist/reset.css';
 import zhCN from 'antd/locale/zh_CN';
@@ -10,7 +11,9 @@ import './styles/index.css';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ConfigProvider locale={zhCN} theme={appTheme}>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </ConfigProvider>
   </StrictMode>,
 );

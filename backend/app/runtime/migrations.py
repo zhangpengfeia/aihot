@@ -13,6 +13,48 @@ from app.core.database import Base, get_engine
 def migrate(engine):
     # checkfirst 默认开启；新增配置与规则表，重复迁移不覆盖用户资料。
     Base.metadata.create_all(engine)
+    from app.core.auth import seed_admin
+    from app.core.config import get_settings
+
+    with Session(engine) as db:
+        seed_admin(db, get_settings())
+    # 旧共享资料只归属首个管理员；新账号不会看到历史共享收藏和脚本。
+    from app.models.users import User
+
+    with Session(engine) as db:
+        owner = db.scalar(select(User.id).where(User.role == "admin").order_by(User.id).limit(1))
+    for table, key_columns, index_name in (
+        ("personal_items", ["user_id", "target_kind", "target_id"], "uq_personal_user_target"),
+        ("creation_cards", ["user_id", "topic_id"], "uq_creation_user_topic"),
+    ):
+        existing = inspect(engine)
+        with engine.begin() as connection:
+            if "user_id" not in {col["name"] for col in existing.get_columns(table)}:
+                connection.execute(text(f"ALTER TABLE {table} ADD COLUMN user_id INTEGER NULL"))
+            connection.execute(
+                text(f"UPDATE {table} SET user_id = :owner WHERE user_id IS NULL"), {"owner": owner}
+            )
+            constraints = existing.get_unique_constraints(table)
+            for constraint in constraints:
+                if "user_id" not in constraint["column_names"]:
+                    if engine.dialect.name != "mysql":
+                        raise RuntimeError("旧共享表的唯一约束升级需要 MySQL")
+                    # MySQL 外键可能复用旧 topic_id 唯一索引，先保留独立索引再移除唯一性。
+                    if table == "creation_cards" and not any(
+                        index["name"] == "ix_creation_topic_owner_migration"
+                        for index in existing.get_indexes(table)
+                    ):
+                        connection.execute(
+                            text(
+                                "CREATE INDEX ix_creation_topic_owner_migration ON creation_cards (topic_id)"
+                            )
+                        )
+                    name = engine.dialect.identifier_preparer.quote(constraint["name"])
+                    connection.execute(text(f"ALTER TABLE {table} DROP INDEX {name}"))
+            if not any(set(c["column_names"]) == set(key_columns) for c in constraints):
+                connection.execute(
+                    text(f"CREATE UNIQUE INDEX {index_name} ON {table} ({', '.join(key_columns)})")
+                )
     columns = {column["name"] for column in inspect(engine).get_columns("snapshots")}
     topic_columns = {column["name"] for column in inspect(engine).get_columns("knowledge_topics")}
     managed_columns = {

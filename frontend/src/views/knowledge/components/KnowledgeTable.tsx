@@ -31,7 +31,15 @@ export function KnowledgeTable({
           <Paragraph className="project-description" ellipsis={{ rows: 2 }}>
             {item.summary}
           </Paragraph>
-          <Space>
+          <Space wrap>
+            {item.tags
+              ?.filter((tag) => tag !== item.category)
+              .slice(0, 4)
+              .map((tag) => (
+                <Tag key={tag} color="geekblue">
+                  {tag}
+                </Tag>
+              ))}
             <Tag color="blue">{item.category}</Tag>
             <Tag>{item.region}</Tag>
             <Tag color={item.topic_kind === '知识探索' ? 'purple' : 'orange'}>

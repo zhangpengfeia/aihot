@@ -4,7 +4,7 @@
 PYTHON := backend/.venv/bin/python
 
 help:
-	@printf '%s\n' 'make install           安装前后端依赖（需要 uv、npm）' 'make start / make dev  启动前端、API、GitHub 和知识采集；Ctrl+C 统一停止' 'make api               单独启动 API' 'make frontend          单独启动前端' 'make worker            单独启动 GitHub 定时采集' 'make knowledge-worker  单独启动知识定时采集' 'make migrate           创建或升级数据库结构' 'make check             后端检查与测试、前端格式检查' 'make build             构建前端'
+	@printf '%s\n' 'make install           安装前后端依赖（需要 uv、npm）' 'make start / make dev  仅启动前端和 API，不启动采集；Ctrl+C 统一停止' 'make api               单独启动 API' 'make frontend          单独启动前端' 'make worker            单独启动 GitHub 定时采集' 'make knowledge-worker  单独启动知识定时采集' 'make migrate           创建或升级数据库结构' 'make check             后端检查与测试、前端格式检查' 'make build             构建前端'
 
 install:
 	cd backend && uv sync --frozen

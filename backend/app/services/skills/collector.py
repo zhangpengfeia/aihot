@@ -91,10 +91,11 @@ def persist(session: Session, run_id: int, candidates: int, records: list[tuple]
     run.error = None
 
 
-def collect(settings: Settings, engine=None, client=None) -> bool:
+def collect(settings: Settings, engine=None, client=None, progress=None) -> bool:
     """MySQL 连接级互斥锁跨进程防重；相同半小时的成功批次不会重复写入。"""
     from app.core.database import get_engine
 
+    progress = progress or (lambda percent, message: None)
     engine = engine or get_engine()
     with engine.connect() as lock_connection:
         locked = lock_connection.scalar(text("SELECT GET_LOCK('aihot.collect', 0)"))
@@ -137,6 +138,7 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
             try:
                 with storage_guard(engine, settings):
                     pass
+                progress(0, "正在搜索 GitHub 项目")
                 discovered = github.discover(settings.search_queries)
                 # 选择累计热度候选及最近更新候选，二者各占一半后去重。
                 half = settings.candidate_limit // 2
@@ -173,6 +175,10 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
                         else:
                             unmatched += 1
                     processed += 1
+                    progress(
+                        int(processed / len(pool) * 95),
+                        f"已检查 {processed}/{len(pool)}：{candidate['full_name']}，匹配 {len(records)}，跳过 {skipped}",
+                    )
                     logger.info(
                         "GitHub 采集进度：已检查=%s/%s，匹配=%s，未匹配=%s，跳过=%s，耗时=%.1f秒",
                         processed,
@@ -185,6 +191,7 @@ def collect(settings: Settings, engine=None, client=None) -> bool:
                 if not records:
                     raise RuntimeError("本轮未找到匹配项目，保留上一期成功榜单")
                 logger.info("GitHub 开始入库：批次=%s，待保存项目=%s", run_id, len(records))
+                progress(95, f"正在入库：{len(records)} 个项目")
                 with storage_guard(engine, settings, incoming_size(records)):
                     with factory.begin() as session:
                         persist(session, run_id, len(pool), records)

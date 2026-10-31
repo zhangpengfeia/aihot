@@ -1,6 +1,7 @@
 export interface Topic {
   id: number;
   title: string;
+  tags?: string[];
   category: string;
   region: string;
   region_basis: string;
@@ -30,6 +31,8 @@ export interface Source {
 
 export interface Meta {
   categories: string[];
+  tag_groups?: Record<string, string[]>;
+  tag_count?: number;
   total: number;
   category_catalog?: {
     status: 'success' | 'stale' | 'fallback';

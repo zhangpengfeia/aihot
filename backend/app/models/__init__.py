@@ -2,6 +2,7 @@
 
 from .knowledge import (
     CategoryEditLock,
+    HotListSnapshot,
     KnowledgeCategoryRule,
     KnowledgeCitation,
     KnowledgeSourceState,
@@ -12,6 +13,7 @@ from .skills import Ranking, Repository, Run, Snapshot
 from .workspace import CreationCard, PersonalItem
 
 __all__ = [
+    "HotListSnapshot",
     "Run",
     "Repository",
     "Snapshot",
@@ -25,3 +27,5 @@ __all__ = [
     "PersonalItem",
     "CreationCard",
 ]
+
+from .users import CollectionTask, DashboardPreference, LoginSession, User  # noqa: F401

@@ -1,6 +1,7 @@
 """来源配置、采集行为与分类查询的完整路由验证。"""
 
 from datetime import datetime
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy import create_engine, event, func, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.core.auth import current_user
 from app.core.config import Settings
 from app.core.database import Base, get_session
 from app.core.sources import FeedSource
@@ -48,6 +50,7 @@ def managed():
             db, parse_feed(RSS.replace(b"/article", b"/other"), SOURCES[1]), datetime(2026, 10, 30)
         )
         db.commit()
+        app.dependency_overrides[current_user] = lambda: SimpleNamespace(id=999, role="admin", enabled=True)
         app.dependency_overrides[get_session] = lambda: db
         app.dependency_overrides[get_category_catalog] = lambda: {
             "categories": ["教育", "科技", "技术"],

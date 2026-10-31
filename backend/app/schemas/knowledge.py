@@ -27,7 +27,7 @@ class SourceUpdate(BaseModel):
     topic_kind: Literal["热点候选", "知识探索"] | None = None
     enabled: bool | None = None
     url: HttpUrl | None = None
-    adapter: Literal["rss", "hackernews", "wikipedia", "json"] | None = None
+    adapter: Literal["rss", "hackernews", "wikipedia", "json", "hotlist"] | None = None
     item_limit: int | None = Field(None, ge=1, le=200)
     options: dict[str, str] | None = None
 

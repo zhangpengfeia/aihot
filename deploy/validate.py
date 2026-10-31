@@ -6,7 +6,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from check_site_config import valid_exported_hash
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -15,18 +14,11 @@ def validate():
     with tempfile.TemporaryDirectory(prefix="aihot-compose-") as directory:
         root = Path(directory)
         shared = root / "shared"
-        (shared / "ssh").mkdir(parents=True)
+        shared.mkdir()
         (shared / "backend.env").write_text(
-            "MYSQL_PASSWORD=dummy\nGITHUB_TOKEN=dummy\n"
+            "MYSQL_HOST=192.0.2.10\nMYSQL_PORT=3307\nMYSQL_PASSWORD=dummy\nGITHUB_TOKEN=dummy\n"
         )
-        (shared / "tunnel.env").write_text(
-            "SSH_HOST=example.com\nSSH_USER=dummy\nDB_REMOTE_HOST=127.0.0.1\n"
-        )
-        (shared / "site.env").write_text(
-            "ACME_EMAIL=dummy@example.com\nSITE_USER=dummy\nSITE_PASSWORD_HASH='$2a$14$"
-            + "A" * 53
-            + "'\n"
-        )
+        (shared / "site.env").write_text("ACME_EMAIL=dummy@example.com\n")
         env = {
             **os.environ,
             "AIHOT_ROOT": str(root),
@@ -51,11 +43,8 @@ def validate():
             text=True,
         )
         services = json.loads(raw)["services"]
-        assert valid_exported_hash(
-            services["caddy"]["environment"]["SITE_PASSWORD_HASH"]
-        )
+        assert "SITE_PASSWORD_HASH" not in services["caddy"]["environment"]
     assert set(services) == {
-        "tunnel",
         "init",
         "api",
         "worker",
@@ -71,10 +60,9 @@ def validate():
         if name != "caddy":
             assert not service.get("ports"), f"Unexpected public port: {name}"
     for name in ("api", "init", "worker", "knowledge-worker"):
-        assert services[name]["environment"]["MYSQL_HOST"] == "tunnel"
-        assert services[name]["environment"]["MYSQL_PORT"] == "3306"
+        assert services[name]["environment"]["MYSQL_HOST"] == "192.0.2.10"
+        assert services[name]["environment"]["MYSQL_PORT"] == "3307"
         assert services[name]["tmpfs"] == ["/tmp:size=64m,mode=1777"], name
-    assert services["tunnel"]["tmpfs"] == ["/tmp:size=8m,mode=1777"]
     for name, service in services.items():
         for mount in service.get("tmpfs", []):
             assert mount.split(":", 1)[0].startswith("/"), f"Invalid tmpfs path: {name}"
@@ -90,7 +78,7 @@ def validate():
     ]
     assert len(services) * 10 * 1024**2 * 10 < 1_000_000_000
     print(
-        "Production Compose validated: 7 services, 700 MiB log budget, no public database/API ports"
+        "Production Compose validated: 6 services, 600 MiB log budget, no public database/API ports"
     )
 
 

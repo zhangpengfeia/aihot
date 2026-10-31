@@ -1,3 +1,4 @@
+import { useAuth } from '../../app/auth';
 import { PlusOutlined, StarOutlined } from '@ant-design/icons';
 import { Alert, Button, Input, Modal, Space, Switch, Typography, message } from 'antd';
 import { useState } from 'react';
@@ -12,6 +13,7 @@ export function PersonalButton({
   targetId: number;
   onSaved?: () => void;
 }) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [item, setItem] = useState<PersonalItem | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,7 +51,12 @@ export function PersonalButton({
   return (
     <>
       {context}
-      <Button icon={<StarOutlined />} onClick={load}>
+      <Button
+        icon={<StarOutlined />}
+        onClick={load}
+        disabled={!user}
+        title={!user ? '请先登录后收藏' : undefined}
+      >
         收藏 / 备注
       </Button>
       <Modal
@@ -97,6 +104,7 @@ export function PersonalButton({
   );
 }
 export function AddToBoard({ topicId }: { topicId: number }) {
+  const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [notice, context] = message.useMessage();
   return (
@@ -104,6 +112,8 @@ export function AddToBoard({ topicId }: { topicId: number }) {
       {context}
       <Button
         icon={<PlusOutlined />}
+        disabled={!user}
+        title={!user ? '请先登录后使用创作看板' : undefined}
         loading={busy}
         onClick={async () => {
           setBusy(true);

@@ -104,3 +104,12 @@ class KnowledgeCitation(Base):
     channel: Mapped[str] = mapped_column(String(30))
     score: Mapped[int | None] = mapped_column(Integer)
     observed_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class HotListSnapshot(Base):
+    """每个来源最后一次成功返回的榜单，保留源站顺序而非混排热度。"""
+
+    __tablename__ = "hot_list_snapshots"
+    source_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    entries: Mapped[list] = mapped_column(JSON)
+    observed_at: Mapped[datetime] = mapped_column(DateTime)

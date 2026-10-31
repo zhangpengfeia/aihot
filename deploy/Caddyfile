@@ -12,8 +12,5 @@
 		output stdout
 		format json
 	}
-	basic_auth {
-		{$SITE_USER} {$SITE_PASSWORD_HASH}
-	}
 	reverse_proxy web:80
 }

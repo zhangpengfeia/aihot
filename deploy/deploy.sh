@@ -14,18 +14,18 @@ command -v python3 >/dev/null
 exec 9>"$root/deploy.lock"
 flock -n 9 || { echo 'Another deployment is running' >&2; exit 1; }
 missing=0
-for file in backend.env site.env tunnel.env ssh/id_ed25519 ssh/known_hosts; do
+for file in backend.env site.env; do
   if [[ ! -s $root/shared/$file ]]; then
     echo "Missing server configuration: $root/shared/$file" >&2
     missing=1
   fi
 done
 if (( missing )); then
-  echo "First-time setup is incomplete. Fill $root/shared/backend.env, site.env and tunnel.env; install the database tunnel private key and verified known_hosts in $root/shared/ssh/. Then rerun the workflow." >&2
+  echo "First-time setup is incomplete. Fill $root/shared/backend.env, site.env with the direct MySQL endpoint. Then rerun the workflow." >&2
   exit 78
 fi
-chmod 700 "$root/shared" "$root/shared/ssh"
-chmod 600 "$root/shared/"*.env "$root/shared/ssh/id_ed25519" "$root/shared/ssh/known_hosts"
+chmod 700 "$root/shared"
+chmod 600 "$root/shared/"*.env
 export AIHOT_ROOT=$root AIHOT_RELEASE=$release AIHOT_RELEASE_DIR=$release_dir
 previous=$(readlink "$root/current" || true)
 compose() {
@@ -38,7 +38,7 @@ rollback() {
   echo 'Deployment failed; restoring the previous application version if available.' >&2
   if [[ $previous == "$root/releases/"* && -f $previous/deploy/compose.prod.yaml ]]; then
     export AIHOT_RELEASE_DIR=$previous AIHOT_RELEASE=${previous##*/}
-    compose up -d --remove-orphans --wait --wait-timeout 180 api web worker knowledge-worker caddy tunnel || true
+    compose up -d --remove-orphans --wait --wait-timeout 180 || true
   else
     # 首次发布失败：停止工作进程，避免继续写入；保留现场供排查。
     compose stop worker knowledge-worker || true
@@ -47,15 +47,13 @@ rollback() {
   exit "$result"
 }
 compose --profile tools config --quiet
-compose --profile tools config --format json | python3 "$release_dir/deploy/check_site_config.py"
 # 在改动正在运行的服务之前完成构建；全部输出由调用方终端/Actions 接收，不写日志文件。
-compose build --pull api web tunnel
+compose build --pull api web
 compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 trap rollback ERR
-compose up -d --wait --wait-timeout 120 tunnel
 # 预检与迁移容器均 --rm；不会累积 stopped 容器日志。
 compose run --rm --no-deps init python -c \
-  'from app.core.config import get_settings; s=get_settings(); assert s.github_token, "Set GITHUB_TOKEN in shared/backend.env"; assert s.mysql_password and not s.mysql_password.startswith("replace-"), "Configure database password"'
+  'from app.core.config import get_settings; s=get_settings(); assert s.github_token, "Set GITHUB_TOKEN in shared/backend.env"; assert s.mysql_password and not s.mysql_password.startswith("replace-"), "Configure database password"; from app.core.database import get_engine; from sqlalchemy import text; c=get_engine().connect(); c.execute(text("SELECT 1")); c.close()'
 compose stop worker knowledge-worker
 compose run --rm --no-deps init
 compose up -d --remove-orphans --wait --wait-timeout 180 api web worker knowledge-worker caddy
@@ -66,12 +64,12 @@ domain=$(compose exec -T caddy printenv SITE_DOMAIN | tr -d '\r\n')
 [[ $domain =~ ^[a-zA-Z0-9.-]+$ ]] || { echo 'Invalid domain' >&2; false; }
 ready=0
 for _ in $(seq 1 24); do
-  # 无密码访问应返回 401；同时验证域名、证书和公网入口，避免误报部署成功。
+  # 公开访问应返回 200；同时验证域名、证书和公网入口，避免误报部署成功。
   code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://$domain/" || true)
-  if [[ $code == 401 ]]; then ready=1; break; fi
+  if [[ $code == 200 ]]; then ready=1; break; fi
   sleep 5
 done
-[[ $ready == 1 ]] || { echo 'HTTPS/domain/authentication verification failed' >&2; false; }
+[[ $ready == 1 ]] || { echo 'HTTPS/domain/public-access verification failed' >&2; false; }
 if [[ -n $previous && $previous != "$release_dir" ]]; then
   ln -sfn "$previous" "$root/previous"
 fi

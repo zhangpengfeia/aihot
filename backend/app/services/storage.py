@@ -90,12 +90,21 @@ def delete_oldest(session: Session) -> dict | None:
         .limit(1)
         .with_for_update()
     )
+    from app.models import HotListSnapshot
+
+    hot_topic_ids = [
+        item["id"]
+        for snapshot in session.scalars(select(HotListSnapshot))
+        for item in snapshot.entries
+        if item.get("id")
+    ]
     protected_topics = select(PersonalItem.target_id).where(PersonalItem.target_kind == "topic")
     newest_topic = select(func.max(KnowledgeTopic.id))
     topic = session.scalar(
         select(KnowledgeTopic)
         .where(
             KnowledgeTopic.id.not_in(protected_topics),
+            KnowledgeTopic.id.not_in(hot_topic_ids),
             KnowledgeTopic.id.not_in(select(CreationCard.topic_id)),
             KnowledgeTopic.id != newest_topic.scalar_subquery(),
         )

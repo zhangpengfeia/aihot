@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import same_origin_writes
+from app.core.auth import require_user
 from app.core.database import get_session
 from app.models import (
     CreationCard,
@@ -18,11 +19,17 @@ router = APIRouter(prefix="/api/workspace", dependencies=[Depends(same_origin_wr
 
 
 @router.get("/cards")
-def cards(q: str = Query("", max_length=100), db: Session = Depends(get_session)):
+def cards(
+    q: str = Query("", max_length=100),
+    user=Depends(require_user),
+    db: Session = Depends(get_session),
+):
     items = [
         card_data(db, card)
         for card in db.scalars(
-            select(CreationCard).order_by(CreationCard.updated_at.desc(), CreationCard.id.desc())
+            select(CreationCard)
+            .where(CreationCard.user_id == user.id)
+            .order_by(CreationCard.updated_at.desc(), CreationCard.id.desc())
         )
     ]
     if q.strip():
@@ -31,12 +38,16 @@ def cards(q: str = Query("", max_length=100), db: Session = Depends(get_session)
 
 
 @router.post("/cards")
-def card_create(body: CardCreate, db: Session = Depends(get_session)):
+def card_create(body: CardCreate, user=Depends(require_user), db: Session = Depends(get_session)):
     target_data(db, "topic", body.topic_id, for_update=True)
-    query = select(CreationCard).where(CreationCard.topic_id == body.topic_id)
+    query = select(CreationCard).where(
+        CreationCard.user_id == user.id, CreationCard.topic_id == body.topic_id
+    )
     card = db.scalar(query)
     if not card:
-        card = CreationCard(topic_id=body.topic_id, created_at=utcnow(), updated_at=utcnow())
+        card = CreationCard(
+            user_id=user.id, topic_id=body.topic_id, created_at=utcnow(), updated_at=utcnow()
+        )
         db.add(card)
         try:
             db.commit()
@@ -49,8 +60,12 @@ def card_create(body: CardCreate, db: Session = Depends(get_session)):
 
 
 @router.patch("/cards/{card_id}")
-def card_update(card_id: int, body: CardWrite, db: Session = Depends(get_session)):
-    card = db.get(CreationCard, card_id)
+def card_update(
+    card_id: int, body: CardWrite, user=Depends(require_user), db: Session = Depends(get_session)
+):
+    card = db.scalar(
+        select(CreationCard).where(CreationCard.id == card_id, CreationCard.user_id == user.id)
+    )
     if card is None:
         raise HTTPException(404, "未找到创作卡片")
     for key, value in body.model_dump(exclude_none=True).items():
@@ -61,8 +76,10 @@ def card_update(card_id: int, body: CardWrite, db: Session = Depends(get_session
 
 
 @router.delete("/cards/{card_id}", status_code=204)
-def card_delete(card_id: int, db: Session = Depends(get_session)):
-    card = db.get(CreationCard, card_id)
+def card_delete(card_id: int, user=Depends(require_user), db: Session = Depends(get_session)):
+    card = db.scalar(
+        select(CreationCard).where(CreationCard.id == card_id, CreationCard.user_id == user.id)
+    )
     if card:
         db.delete(card)
         db.commit()

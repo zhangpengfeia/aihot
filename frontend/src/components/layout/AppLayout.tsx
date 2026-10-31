@@ -1,12 +1,13 @@
+import { useAuth } from '../../app/auth';
+import { UserMenu } from './UserMenu';
 import {
   ApiOutlined,
-  ClockCircleOutlined,
   FireOutlined,
   GithubOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, Grid, Layout, Menu, Space, Tooltip, Typography } from 'antd';
+import { Button, Grid, Layout, Menu, Space, Tooltip, Typography } from 'antd';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { navigationItems, viewLabels, type ViewKey } from '../../app/navigation';
@@ -21,6 +22,7 @@ export function AppLayout({
   onNavigate: (view: ViewKey) => void;
   children: ReactNode;
 }) {
+  const { user } = useAuth();
   const screens = Grid.useBreakpoint();
   const [menuCollapsed, setMenuCollapsed] = useState<boolean | null>(null);
   const collapsed = menuCollapsed ?? !screens.lg;
@@ -50,21 +52,11 @@ export function AppLayout({
           mode="inline"
           selectedKeys={[view]}
           defaultOpenKeys={['skills', 'knowledge-group', 'creator-center']}
-          items={navigationItems}
+          items={navigationItems?.filter((item) => item?.key !== 'creator-center' || !!user)}
           onClick={({ key }) => {
             onNavigate(key as ViewKey);
           }}
         />
-        <div className="sider-footer">
-          {!collapsed ? (
-            <>
-              <Badge status="processing" text={<Text>GitHub 每天 00:00 采集</Text>} />
-              <p>GitHub 官方 API · 北京时间</p>
-            </>
-          ) : (
-            <ClockCircleOutlined />
-          )}
-        </div>
         <Tooltip title={collapsed ? '展开菜单' : '收起菜单'} placement="right">
           <Button
             type="text"
@@ -77,6 +69,7 @@ export function AppLayout({
             {!collapsed && '收起菜单'}
           </Button>
         </Tooltip>
+        <UserMenu collapsed={collapsed} onNavigate={onNavigate} />
       </Sider>
       <Layout className={collapsed ? 'main-layout collapsed' : 'main-layout'}>
         <Header className="app-header">

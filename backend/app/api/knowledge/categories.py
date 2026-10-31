@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import same_origin_writes
 from app.core.database import get_session
+from app.core.taxonomy import TAG_TERMS
 from app.models import (
     KnowledgeCategoryRule,
     KnowledgeTopic,
@@ -35,6 +36,7 @@ def categories(db: Session = Depends(get_session), catalog: dict = Depends(get_c
     rules = category_rules(db)
     names = (
         set(counts)
+        | set(TAG_TERMS)
         | set(rules)
         | set(catalog["categories"])
         | set(db.scalars(select(ManagedKnowledgeSource.category)))

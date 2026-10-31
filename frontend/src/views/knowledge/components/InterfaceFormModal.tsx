@@ -96,6 +96,7 @@ export function InterfaceFormModal({
               { value: 'hackernews', label: 'Hacker News 官方 API' },
               { value: 'wikipedia', label: 'Wikipedia 历史事件 API' },
               { value: 'json', label: '通用 JSON GET API' },
+              { value: 'hotlist', label: '热搜榜单（DailyHotApi / 字段映射）' },
             ]}
           />
         </Form.Item>

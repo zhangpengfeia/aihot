@@ -37,7 +37,7 @@ def inspect_budget():
             raise SystemExit(f"Service is not running: {service}")
         services.add(service)
         total += 10 * 1024**2 * 10
-    required = {"tunnel", "api", "web", "worker", "knowledge-worker", "caddy"}
+    required = {"api", "web", "worker", "knowledge-worker", "caddy"}
     if not required.issubset(services):
         raise SystemExit(f"Missing services: {sorted(required - services)}")
     if total >= 1_000_000_000:

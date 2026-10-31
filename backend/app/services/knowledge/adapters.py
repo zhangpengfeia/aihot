@@ -31,7 +31,9 @@ def record(source, title, url, summary="", published=None, score=None):
     region, basis = classify_region(title, summary, source)
     if isinstance(published, (int, float)):
         try:
-            published = datetime.fromtimestamp(published, UTC).replace(tzinfo=None)
+            published = datetime.fromtimestamp(
+                published / 1000 if published > 100_000_000_000 else published, UTC
+            ).replace(tzinfo=None)
         except (ValueError, OverflowError, OSError):
             published = None
     elif not isinstance(published, datetime):
@@ -130,6 +132,42 @@ def collect_source(source, fetch):
                 rows.append(row)
         return rows
     payload = json.loads(fetch(url))
+    if source.adapter == "hotlist":
+        if not isinstance(payload, dict) or payload.get("code", 200) != 200:
+            raise ValueError("热搜聚合接口返回失败状态")
+        entries = value_at(payload, source.options.get("items_path", "data"), [])
+        if not isinstance(entries, list) or not entries:
+            raise ValueError("热搜聚合接口没有返回有效榜单")
+        rows = []
+        for index, item in enumerate(entries[: source.item_limit]):
+            if not isinstance(item, dict):
+                continue
+            score = item.get("hot", item.get("score"))
+            score_label = str(score)[:100] if score is not None else None
+            if isinstance(score, str) and score.isdigit():
+                score = int(score)
+            title = value_at(item, source.options.get("title_field", "title"))
+            link = item.get("url") or item.get("link") or item.get("mobileUrl") or ""
+            if source.options.get("url_prefix"):
+                link = source.options["url_prefix"] + quote(
+                    str(value_at(item, source.options.get("url_field", "title"))), safe=""
+                )
+            row = record(
+                source,
+                title,
+                link,
+                item.get("desc") or "热搜榜单词条，摘要缺失；请打开原文核实。",
+                item.get("timestamp"),
+                score,
+            )
+            if row:
+                rank = item.get("rank")
+                row["hot_rank"] = rank if type(rank) is int and 0 < rank <= 10000 else index + 1
+                row["score_label"] = score_label
+                rows.append(row)
+        if not rows:
+            raise ValueError("热搜词条缺少可追溯的标题或链接")
+        return rows
     options = source.options
     entries = value_at(payload, options.get("items_path", ""), [])
     if not isinstance(entries, list):

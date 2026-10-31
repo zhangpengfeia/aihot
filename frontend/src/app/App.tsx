@@ -1,3 +1,7 @@
+import { useAuth } from './auth';
+import { HotListsPage } from '../views/knowledge/HotListsPage';
+import { Alert } from 'antd';
+import { UserManagementPage } from '../views/users/UserManagementPage';
 import { useState } from 'react';
 import { PageHeading } from '../components/common/PageHeading';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -16,11 +20,18 @@ import type { ViewKey } from './navigation';
 
 /** 应用仅管理导航和全局资料抽屉，具体页面自行管理查询与表单。 */
 export default function App() {
+  const { user } = useAuth();
   const [view, setView] = useState<ViewKey>('summary');
   const [selected, setSelected] = useState<number | null>(null);
   const { tick, refresh } = useRefreshTick();
   let content;
   switch (view) {
+    case 'hotlists':
+      content = <HotListsPage tick={tick} />;
+      break;
+    case 'users':
+      content = <UserManagementPage />;
+      break;
     case 'knowledge':
       content = <KnowledgeLibraryPage />;
       break;
@@ -69,7 +80,11 @@ export default function App() {
   }
   return (
     <AppLayout view={view} onNavigate={setView}>
-      {content}
+      {['favorites', 'creation'].includes(view) && !user ? (
+        <Alert type="info" title="请点击左下角头像登录后访问自己的创作者中心" />
+      ) : (
+        content
+      )}
       <SkillDetailDrawer selected={selected} onClose={() => setSelected(null)} />
     </AppLayout>
   );

@@ -1,6 +1,7 @@
 """真实路由与数据库验证个人资料、创作流转、榜单差异和采集面板。"""
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.core.auth import current_user
 from app.core.database import Base, get_session
 from app.core.sources import FeedSource
 from app.main import app
@@ -55,6 +57,7 @@ def context():
             AT,
         )
         db.commit()
+        app.dependency_overrides[current_user] = lambda: SimpleNamespace(id=999, role="admin", enabled=True)
         app.dependency_overrides[get_session] = lambda: db
         with TestClient(app) as client:
             yield client, db, engine

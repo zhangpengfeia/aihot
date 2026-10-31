@@ -2,6 +2,24 @@
 
 React + TypeScript + Ant Design 6 前端，Python/FastAPI 后端，MySQL 8.0 持久化。每天北京时间凌晨 0 点发现和观测 Agent/Claude/Codex Skills 项目，展示累计 Star Top 20、24 小时净增长 Top 20、历史榜单、README 资料及 Markdown 导出。
 
+## 用户和管理员
+
+网站无需登录即可浏览。首次运行前在 `backend/.env`（生产为 `shared/backend.env`）设置 `ADMIN_USERNAME` 和至少 12 位的 `ADMIN_PASSWORD`，执行 `make migrate` 初始化管理员。已有管理员不会被环境变量覆盖。
+
+左下角头像打开登录、采集状态菜单。管理员登录后增加“用户管理”，可新增账号、分配角色、停用和重置密码；在采集状态面板手动触发 GitHub 或知识库采集。采集复用既有互斥锁和时间窗口幂等，重复请求可能跳过。请求在 API 进程后台运行，重启不会自动恢复请求，可查看状态后重试。
+
+登录会话有效期 12 小时，修改账号会撤销该账号会话。创作者中心登录后可见；收藏、备注和创作脚本按账号隔离，来源配置及用户管理仅管理员可修改。升级迁移会把旧共享收藏和创作归属最早创建的管理员。
+
+## 知识标签、全网热搜与首页卡片
+
+知识选题库提供 279 个热门和小众细分标签，和已有内容分类合并到同一个可搜索多选框。多选命中任意一项，与地区、来源、日期及关键词条件同时生效。标签依据标题/摘要文本规则匹配，不代表已收录同等数量的内容。
+
+新增百度、微博、小红书、知乎、B站、抖音、头条、贴吧、IT之家、懂车帝的 60s 聚合来源，以及 30 个默认停用的 DailyHotApi 备用模板。社区公共接口可能限流或失效，可在接口管理测试、替换地址和启停。全网热搜显示最后成功榜单及时间，失败保留旧榜单并展示错误，不伪造热度。参考 [60s API 文档](https://docs.60s-api.viki.moe/) 和 [DailyHotApi](https://github.com/imsyy/DailyHotApi)。
+
+首页“编辑首页卡片”可选择项目、知识库、热搜、我的收藏，支持全部隐藏。登录后按账号保存；访客仅保存在当前浏览器，收藏卡片需登录。
+
+更新后先备份数据库，再运行 `make migrate` 创建新表、升级个人数据归属并增量导入来源，然后重启 API。管理员点击左下角头像进入采集状态面板，手动采集知识库后才会产生新榜单；`make start` 继续只启动前端和 API。迁移后不要回退到仍将收藏/创作当作共享数据的旧版本。
+
 ## 热度含义
 
 - 累计榜按当前观测 Star 数排序，是默认榜单。
@@ -22,12 +40,12 @@ React + TypeScript + Ant Design 6 前端，Python/FastAPI 后端，MySQL 8.0 持
 make install    # 首次安装前后端依赖
 # 首次使用：复制 backend/.env.example 为 backend/.env 并填写配置
 make migrate    # 首次建表或版本升级时执行
-make start      # 前端 + API + 两个定时采集服务
+make start      # 仅前端 + API，不启动采集
 ```
 
-访问 http://127.0.0.1:5173，按 `Ctrl+C` 统一停止本次启动的服务。`make dev` 与 `make start` 等价。启动不会自动安装依赖或修改表结构；端口 8000 / 5173 被占用时会提示先停止原服务。通过 SSH 隧道访问 MySQL 时，需在另一个终端保持隧道连接。
+访问 http://127.0.0.1:5173，按 `Ctrl+C` 统一停止本次启动的服务。`make dev` 与 `make start` 等价。启动不会自动安装依赖或修改表结构；端口 8000 / 5173 被占用时会提示先停止原服务。本地及线上均通过 MYSQL_HOST/MYSQL_PORT 直接连接 MySQL，默认配置为 152.136.228.231:3306，无需 SSH 隧道。
 
-GitHub 采集仍按北京时间每日 02:00 执行，知识采集保持半小时调度。任一服务退出会停止本次启动的其他服务，避免留下残余进程。可用 `make api`、`make frontend`、`make worker`、`make knowledge-worker` 单独启动；`make help` 查看全部命令，`make check` 检查代码和测试，`make build` 构建前端。
+本地 `make start` / `make dev` 不启动 GitHub 或知识库采集进程。需要采集时可使用管理员手动采集，或明确执行 `make worker` / `make knowledge-worker`。线上定时采集保持不变。任一服务退出会停止本次启动的其他服务，避免留下残余进程。可用 `make api`、`make frontend`、`make worker`、`make knowledge-worker` 单独启动；`make help` 查看全部命令，`make check` 检查代码和测试，`make build` 构建前端。
 
 ### 1. 准备 MySQL
 
@@ -79,7 +97,7 @@ npm run dev
 
 ## Docker 部署（使用已有 MySQL）
 
-`zhangff.cn` 生产部署与 GitHub 自动发布见 [服务器部署说明](deploy/README.md)。包含服务器 SSH 隧道、常驻定时采集、HTTPS/认证、发布健康检查与应用版本回退；7 个生产容器日志合计预算 700 MiB，达到阈值自动轮转。
+`zhangff.cn` 生产部署与 GitHub 自动发布见 [服务器部署说明](deploy/README.md)。包含 MySQL 直连、常驻定时采集、HTTPS/认证、发布健康检查与应用版本回退；6 个生产容器日志合计预算 600 MiB，达到阈值自动轮转。
 
 1. 配好 backend/.env。容器中 MYSQL_HOST 应填写数据库网络地址；macOS Docker 访问宿主机可使用 host.docker.internal，不能填写 127.0.0.1。
 2. 执行 `docker compose up --build -d`。
@@ -91,7 +109,7 @@ npm run dev
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| MYSQL_HOST / MYSQL_PORT | 127.0.0.1 / 3306 | MySQL 连接地址 |
+| MYSQL_HOST / MYSQL_PORT | 152.136.228.231 / 3306 | MySQL 连接地址 |
 | MYSQL_DATABASE / MYSQL_USER / MYSQL_PASSWORD | aihot / aihot / 空 | 数据库和账号 |
 | GITHUB_TOKEN | 空 | 公开仓库读取凭证，worker 必填 |
 | SEARCH_QUERIES | 见 config.py | JSON 字符串数组；查询自动排除归档和 Fork |
@@ -271,7 +289,7 @@ Hacker News 投票只表示该社区的热度，不能和其他来源作全网�
 升级：先按需备份数据库，然后运行 `cd backend && uv run python -m app.migrate`，随后重启后端和知识 worker。迁移创建引用表及接口类型、映射、删除标记等可空字段，不删除已有资料。新知识运行 `uv run python -m app.knowledge_worker --once` 可立即验证入库。
 
 
-补充：Hacker News 搜索 API（hn.algolia.com）作为独立备选接口，一次读取热点列表，减少逐条请求带来的超时；其 points 仅代表社区指标。通用 JSON 映射可选 score_field。公网传输优先 IPv4，连接失败可尝试第二个已校验地址；数据库连接/读写设置超时，批量入库减少跨 SSH 的查询往返。SSH 隧道仍需保持运行，断线后本轮事务回滚，恢复后可重试，不补造成功记录。
+补充：Hacker News 搜索 API（hn.algolia.com）作为独立备选接口，一次读取热点列表，减少逐条请求带来的超时；其 points 仅代表社区指标。通用 JSON 映射可选 score_field。公网传输优先 IPv4，连接失败可尝试第二个已校验地址；数据库连接/读写设置超时，批量入库减少数据库查询往返。数据库使用直连，断线后本轮事务回滚，恢复后可重试，不补造成功记录。
 
 
 ## 代码组织
@@ -297,3 +315,5 @@ DATABASE_CLEANUP_TARGET_RATIO=0.9
 收藏、个人备注、创作卡片引用的知识选题保留；每个仓库最新快照所在批次、最近两期成功榜单、最近 26 小时及运行中批次保留，最新一个知识选题保留。仓库身份、来源配置、个人资料和创作脚本不删除。保留数据已占满或单批数据太大时停止写入，在日志记录原因。清理后采集失败不会恢复已经删除的历史。
 
 采集状态面板显示估算已用容量、上限与清理规则；日志记录清理前后容量及删除数量。容量汇总应用表字段的实际字节长度，并估算行与索引开销，**不是 MySQL 磁盘文件的硬上限**，不包含数据库日志、备份及临时文件。DELETE 释放空间供数据库复用，文件不会立即缩小，不自动执行锁表重建。严格限制物理磁盘占用需要在服务器设置磁盘配额；仍需独立备份。容量扫描在数据库内聚合，大数据量时应关注查询开销。
+
+管理员点击“立即采集”后需二次确认；确认后可查看进度条和最近 500 条任务日志（每两秒刷新），关闭弹窗后可通过“查看采集进度”重新打开。本次升级新增 `collection_tasks` 表，已有部署需先运行 `python -m app.runtime.migrations`。进度按已处理项目或来源计算，搜索阶段保持等待；任务状态持久化在数据库中，服务重启不会自动恢复中断的后台任务。

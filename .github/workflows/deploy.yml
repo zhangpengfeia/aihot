@@ -46,13 +46,12 @@ jobs:
         run: |
           python deploy/validate.py
           python -m unittest discover -s deploy/tests -v
-          for script in deploy/*.sh deploy/tunnel/*.sh; do bash -n "$script"; done
-          shellcheck deploy/*.sh deploy/tunnel/*.sh
+          for script in deploy/*.sh; do bash -n "$script"; done
+          shellcheck deploy/*.sh
       - name: Build deployment images
         run: |
           docker build -t aihot-ci-backend ./backend
           docker build -t aihot-ci-web ./frontend
-          docker build -t aihot-ci-tunnel ./deploy/tunnel
 
   deploy:
     needs: check

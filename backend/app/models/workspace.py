@@ -18,11 +18,14 @@ from app.core.database import Base
 
 
 class PersonalItem(Base):
-    """实例共享的个人资料，收藏与备注独立于只读采集快照。"""
+    """用户独立的个人资料，收藏与备注独立于只读采集快照。"""
 
     __tablename__ = "personal_items"
-    __table_args__ = (UniqueConstraint("target_kind", "target_id"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "target_kind", "target_id", name="uq_personal_user_target"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
     target_kind: Mapped[str] = mapped_column(String(20))
     target_id: Mapped[int] = mapped_column(BigInteger)
     favorite: Mapped[bool] = mapped_column(default=False)
@@ -34,7 +37,9 @@ class PersonalItem(Base):
 class CreationCard(Base):
     __tablename__ = "creation_cards"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    topic_id: Mapped[int] = mapped_column(ForeignKey("knowledge_topics.id"), unique=True)
+    __table_args__ = (UniqueConstraint("user_id", "topic_id", name="uq_creation_user_topic"),)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    topic_id: Mapped[int] = mapped_column(ForeignKey("knowledge_topics.id"))
     stage: Mapped[str] = mapped_column(String(20), default="待筛选")
     script: Mapped[str] = mapped_column(Text().with_variant(MEDIUMTEXT(), "mysql"), default="")
     output_url: Mapped[str] = mapped_column(String(2000), default="")

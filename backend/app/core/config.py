@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     mysql_database: str = "aihot"
     mysql_user: str = "aihot"
     mysql_password: str = ""
+    admin_username: str = "admin"
+    admin_password: str = ""
     github_token: str = ""
     knowledge_sources: list[FeedSource] = Field(
         default_factory=lambda: [FeedSource(**s) for s in DEFAULT_SOURCES]

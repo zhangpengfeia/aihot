@@ -1,4 +1,21 @@
-import { Alert, Card, Col, Progress, Row, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { useEffect, useState } from 'react';
+import { get, write } from '../../api/http';
+import type { User } from '../users/UserManagementPage';
+import {
+  Button,
+  Modal,
+  message,
+  Alert,
+  Card,
+  Col,
+  Progress,
+  Row,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import { PageHeading as Heading } from '../../components/common/PageHeading';
 import { useResource } from '../../hooks/useResource';
 import { type Run } from '../../types/skills';
@@ -15,14 +32,172 @@ const runLabels: Record<string, string> = {
 export function CollectionStatusPage({ tick }: { tick: number }) {
   const resource = useResource<Status>('/workspace/collection-status', tick);
   const data = resource.data;
+  const { data: user } = useResource<User | null>('/auth/me', tick);
+  const [pending, setPending] = useState<string | null>(null);
+  const [confirmKind, setConfirmKind] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [task, setTask] = useState<{
+    status: string;
+    progress: number;
+    logs: { time: string; message: string }[];
+  } | null>(null);
+  const [pollError, setPollError] = useState('');
+  const [showProgress, setShowProgress] = useState(false);
+  const active = !!taskId && (!task || ['pending', 'running'].includes(task.status));
+  useEffect(() => {
+    if (!taskId) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const result = await get<NonNullable<typeof task>>(
+          `/admin/collection-tasks/${taskId}`,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        setTask(result);
+        setPollError('');
+        if (!['pending', 'running'].includes(result.status)) {
+          resource.refresh();
+          return;
+        }
+      } catch {
+        if (controller.signal.aborted) return;
+        setPollError('进度读取失败，正在重试。采集可能仍在后台运行。');
+      }
+      timer = setTimeout(poll, 2000);
+    };
+    void poll();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [taskId]);
+  const trigger = async (kind: string) => {
+    if (pending || active) return;
+    setPending(kind);
+    try {
+      const result = await write<{ task_id: string }>(`/admin/collect/${kind}`, 'POST', {});
+      setConfirmKind(null);
+      setTask(null);
+      setPollError('');
+      setTaskId(result.task_id);
+      setShowProgress(true);
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setPending(null);
+    }
+  };
   return (
     <>
+      <Modal
+        title="确认立即采集？"
+        open={confirmKind !== null}
+        onCancel={() => {
+          if (!pending) setConfirmKind(null);
+        }}
+        onOk={() => {
+          if (confirmKind) void trigger(confirmKind);
+        }}
+        okText="确认采集"
+        cancelText="取消"
+        confirmLoading={!!pending}
+        cancelButtonProps={{ disabled: !!pending }}
+        closable={!pending}
+        maskClosable={false}
+        keyboard={!pending}
+      >
+        <Alert
+          showIcon
+          type="warning"
+          title={`是否立即触发${confirmKind === 'github' ? ' GitHub ' : '知识库'}采集接口？`}
+          description="确认后将启动后台采集并请求外部接口。同一时间窗口已完成的批次会自动跳过。"
+        />
+      </Modal>
+      <Modal
+        title="采集进度与日志"
+        open={showProgress}
+        width={760}
+        onCancel={() => setShowProgress(false)}
+        footer={
+          <Button onClick={() => setShowProgress(false)}>{active ? '后台运行' : '关闭'}</Button>
+        }
+      >
+        <Space orientation="vertical" className="full-width">
+          <Text>
+            {task
+              ? ({
+                  pending: '等待执行',
+                  running: '采集中',
+                  success: '采集完成',
+                  partial: '采集结束，部分来源失败',
+                  failed: '采集失败',
+                  skipped: '已跳过',
+                }[task.status] ?? task.status)
+              : '等待采集任务启动'}
+          </Text>
+          <Progress
+            percent={task?.progress ?? 0}
+            status={
+              task?.status === 'failed' || task?.status === 'partial'
+                ? 'exception'
+                : active
+                  ? 'active'
+                  : 'normal'
+            }
+          />
+          <Text type="secondary">
+            进度按已处理的项目或来源计算，每两秒更新。关闭窗口后仍会继续采集。
+          </Text>
+          {pollError && <Alert type="warning" showIcon title={pollError} />}
+          <div
+            role="log"
+            aria-label="采集日志"
+            style={{
+              maxHeight: 360,
+              overflow: 'auto',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'anywhere',
+              background: '#f5f5f5',
+              padding: 12,
+            }}
+          >
+            {task?.logs.map((log, index) => (
+              <div key={index}>
+                {formatTime(log.time)} · {log.message}
+              </div>
+            ))}
+            {!task?.logs.length && '等待日志…'}
+          </div>
+        </Space>
+      </Modal>
       <Heading
         title="采集状态面板"
         description="查看采集记录和计划时间，页面每分钟刷新。"
         {...resource}
       />
       <Space orientation="vertical" size={16} className="full-width">
+        {user?.role === 'admin' && (
+          <Space wrap>
+            <Button
+              type="primary"
+              disabled={!!pending || active}
+              loading={pending === 'github'}
+              onClick={() => setConfirmKind('github')}
+            >
+              立即采集 GitHub
+            </Button>
+            <Button
+              disabled={!!pending || active}
+              loading={pending === 'knowledge'}
+              onClick={() => setConfirmKind('knowledge')}
+            >
+              立即采集知识库
+            </Button>
+            {taskId && <Button onClick={() => setShowProgress(true)}>查看采集进度</Button>}
+          </Space>
+        )}
         {resource.error && <Alert type="error" showIcon title={resource.error} />}
         <Alert
           type="info"

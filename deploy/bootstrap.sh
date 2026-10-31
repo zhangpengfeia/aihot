@@ -8,9 +8,9 @@ for tool in docker flock curl python3 tar; do
   command -v "$tool" >/dev/null || { echo "Missing server dependency: $tool. Install it before retrying deployment." >&2; exit 1; }
 done
 docker compose version
-mkdir -p "$root"/{shared/ssh,incoming,releases}
-chmod 700 "$root/shared" "$root/shared/ssh" "$root/incoming"
-for entry in backend site tunnel; do
+mkdir -p "$root"/{shared,incoming,releases}
+chmod 700 "$root/shared" "$root/incoming"
+for entry in backend site; do
   if [[ ! -e $root/shared/$entry.env ]]; then
     if [[ $entry == backend ]]; then
       cp "$source_dir/backend/.env.example" "$root/shared/$entry.env"
@@ -22,8 +22,6 @@ for entry in backend site tunnel; do
 done
 cat <<EOF
 Prepared $root (existing configuration was preserved).
-Fill shared/backend.env, shared/site.env, shared/tunnel.env.
-Install the database SSH private key as shared/ssh/id_ed25519 (chmod 600).
-Install VERIFIED database SSH host keys as shared/ssh/known_hosts.
+Fill shared/backend.env (direct MySQL host/port) and shared/site.env.
 No containers have been started and no database has been changed.
 EOF

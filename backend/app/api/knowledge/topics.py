@@ -9,6 +9,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_session
+from app.core.taxonomy import TAG_GROUPS, TAG_TERMS, topic_tags
 from app.models import (
     KnowledgeCitation,
     KnowledgeSourceState,
@@ -27,6 +28,7 @@ def serialize(item: KnowledgeTopic, rules=None, citations=None):
 
     return {
         "id": item.id,
+        "tags": topic_tags(item.title, item.summary, item.category),
         "channels": [
             {"name": row.source_name, "adapter": row.channel, "score": row.score}
             for row in (citations or [])
@@ -52,6 +54,9 @@ def serialize(item: KnowledgeTopic, rules=None, citations=None):
 @router.get("/topics")
 def topics(
     category: str | None = None,
+    labels: list[str] = Query(default=[], max_length=50),
+    tag: str | None = Query(None, max_length=50),
+    hot_only: bool = False,
     region: Literal["国内", "国外"] | None = None,
     topic_kind: Literal["热点候选", "知识探索"] | None = None,
     q: str = Query("", max_length=100),
@@ -66,6 +71,42 @@ def topics(
 
     rules = category_rules(session)
     filters = []
+    if labels:
+        choices = []
+        for label in set(labels):
+            if not label.strip() or len(label) > 50:
+                raise HTTPException(422, "内容分类或标签长度应在 1–50 字之间")
+            canonical = resolve_category(label, rules)
+            aliases = {name for name in rules if resolve_category(name, rules) == canonical} | {
+                canonical
+            }
+            choices.append(KnowledgeTopic.category.in_(aliases))
+            for term in TAG_TERMS.get(label, []):
+                choices.extend(
+                    column.contains(term, autoescape=True)
+                    for column in (KnowledgeTopic.title, KnowledgeTopic.summary)
+                )
+        filters.append(or_(*choices))
+
+    if tag:
+        terms = TAG_TERMS.get(tag, [tag])
+        filters.append(
+            or_(
+                KnowledgeTopic.category == tag,
+                *[
+                    column.contains(term, autoescape=True)
+                    for term in terms
+                    for column in (KnowledgeTopic.title, KnowledgeTopic.summary)
+                ],
+            )
+        )
+    if hot_only:
+        filters.append(
+            KnowledgeTopic.id.in_(
+                select(KnowledgeCitation.topic_id).where(KnowledgeCitation.channel == "hotlist")
+            )
+        )
+
     if source_id is not None:
         source = session.get(ManagedKnowledgeSource, source_id)
         if source is None or source.deleted_at is not None:
@@ -182,6 +223,17 @@ def meta(
                 if not category_hidden(name, rules)
             }
         ),
+        "tag_groups": {
+            group: sorted(
+                {
+                    resolve_category(name, rules)
+                    for name in names
+                    if not category_hidden(name, rules)
+                }
+            )
+            for group, names in TAG_GROUPS.items()
+        },
+        "tag_count": len(TAG_TERMS),
         "category_catalog": {
             **{key: value for key, value in catalog.items() if key != "categories"},
             "updated_at": iso(catalog["updated_at"]),
@@ -210,3 +262,28 @@ def export(topic_id: int, session: Session = Depends(get_session)):
     return PlainTextResponse(
         content, headers={"Content-Disposition": f'attachment; filename="topic-{topic_id}.md"'}
     )
+
+
+@router.get("/hotlists")
+def hotlists(session: Session = Depends(get_session)):
+    from app.api.knowledge.sources import source_data
+    from app.models import HotListSnapshot
+    from app.utils.time import iso
+
+    result = []
+    for source in session.scalars(
+        select(ManagedKnowledgeSource)
+        .where(
+            ManagedKnowledgeSource.adapter == "hotlist", ManagedKnowledgeSource.deleted_at.is_(None)
+        )
+        .order_by(ManagedKnowledgeSource.id)
+    ):
+        snapshot = session.get(HotListSnapshot, source.source_key)
+        result.append(
+            {
+                **source_data(session, source),
+                "observed_at": iso(snapshot.observed_at) if snapshot else None,
+                "items": snapshot.entries if snapshot else [],
+            }
+        )
+    return {"items": result}

@@ -12,45 +12,27 @@
 bash deploy/bootstrap.sh /opt/aihot
 ```
 
-也可先推送代码触发流水线：首次运行会自动创建部署目录和缺失配置模板，已有配置不会覆盖。模板生成后仍需填写以下真实配置及安装隧道密钥，再重跑流水线。缺少文件时会逐项列出路径并以 exit 78 停止，不会启动应用或修改数据库。日志会区分上传目录准备、源码上传与服务器部署阶段。
+也可先推送代码触发流水线：首次运行会自动创建部署目录和缺失配置模板，已有配置不会覆盖。模板生成后仍需填写以下真实配置，再重跑流水线。缺少文件时会逐项列出路径并以 exit 78 停止，不会启动应用或修改数据库。日志会区分上传目录准备、源码上传与服务器部署阶段。
 
 配置文件仅保留在服务器 `/opt/aihot/shared`，发布代码不会覆盖：
 
 | 文件 | 内容 |
 | --- | --- |
 | `backend.env` | MySQL 数据库名、用户、密码、GitHub Token、5 GB 数据清理策略等 |
-| `tunnel.env` | 数据库堡垒机 SSH_HOST/SSH_PORT/SSH_USER，及从堡垒机访问的数据库 DB_REMOTE_HOST/DB_REMOTE_PORT |
-| `site.env` | SITE_DOMAIN=zhangff.cn、ACME_EMAIL、登录用户名和 bcrypt 密码哈希 |
-| `ssh/id_ed25519` | 服务器到数据库堡垒机的专用 SSH 私钥，权限 600；不支持交互密码或带口令的密钥 |
-| `ssh/known_hosts` | 经核验的数据库堡垒机主机密钥，非 22 端口使用 `[host]:port` 格式 |
+| `site.env` | SITE_DOMAIN=zhangff.cn、ACME_EMAIL |
 
-`backend.env` 中 MYSQL_HOST/MYSQL_PORT 在生产 Compose 中固定覆盖为 `tunnel:3306`，不要填宿主机的 `127.0.0.1:13306`。其他数据库配置不变。SSH 隧道只向容器网络开放 3306，不发布到公网；保持存活、断线退出后由 Docker 自动重启。数据库若就在该网站服务器上，也可将 SSH_HOST 配成 `152.136.228.231`、SSH_USER=root、DB_REMOTE_HOST=127.0.0.1；请先确认数据库确在该位置并已授权专用隧道公钥。
+本地 `backend/.env` 和线上 `/opt/aihot/shared/backend.env` 均使用 MySQL 直连：
 
-用 Caddy 交互生成登录密码哈希（不要将明文密码写进命令或仓库）：
-
-推荐在服务器直接设置并保存，省去手工复制哈希：
-
-```bash
-python3 deploy/set-site-password.py /opt/aihot/shared/site.env
+```dotenv
+MYSQL_HOST=152.136.228.231
+MYSQL_PORT=3306
 ```
 
-脚本两次隐藏输入网站密码，通过 stdin 传给 Caddy，配置文件中只保存 bcrypt 哈希并自动加单引号，权限设为 600；不会将明文放入命令参数或日志。部署在构建镜像前检查 Compose 解析后的哈希格式（完整 bcrypt 为 60 个字符）。也可使用下面的手动生成方式：
+保留原数据库名、账号和密码。生产 Compose 不覆盖 MYSQL_HOST/MYSQL_PORT，也不再要求 tunnel.env 或数据库 SSH 密钥。MySQL 必须监听可达地址，账号允许应用来源登录，防火墙/安全组仅放行开发者公网 IP 和生产应用出口 IP。容器中的 127.0.0.1 指向容器自身，不能作为宿主机数据库地址。
 
-```bash
-docker run --rm -it --log-driver none caddy:2-alpine caddy hash-password
-```
+已有部署升级前先修改服务器的 backend.env（发布不会覆盖已有配置）。成功执行 `compose up --remove-orphans` 会移除旧 tunnel 容器；旧 tunnel.env 和数据库隧道密钥文件不再使用，可在确认直连正常后自行归档。部署 SSH 密钥仍用于上传和发布，继续保留。
 
-将输出填入 `site.env` 的 `SITE_PASSWORD_HASH='完整哈希'`，保留单引号以防 dotenv 展开 `$`。HTTPS 证书由 Caddy 自动申请及续期。全站（含 API 文档）使用 Basic Auth，因为该项目的收藏、备注和管理操作属于共享个人实例。不要将初始化示例值用于生产。
-
-部署私钥和数据库隧道私钥是两套用途。隧道公钥在数据库堡垒机授权，建议限制为目标数据库地址转发；部署公钥在网站服务器授权。获取 SSH 主机密钥后，应通过云控制台/可信渠道核对指纹再保存，流水线和隧道均启用 StrictHostKeyChecking，不临时信任扫描结果。
-
-数据库就在网站服务器本机、`tunnel.env` 配置为 `SSH_HOST=127.0.0.1`、`SSH_USER=root` 且数据库为本机回环地址时，可在服务器执行：
-
-```bash
-bash deploy/setup-local-tunnel.sh /opt/aihot
-```
-
-脚本将 SSH_HOST 改为当前 Docker 宿主机网关（容器内的 127.0.0.1 指向容器自身），生成专用数据库隧道密钥，仅授权数据库目标转发，并使用本机 SSH 主机公钥填充 known_hosts。不覆盖已有私钥，不移除其他 SSH 授权。若已有同一公钥授权则保留该授权规则；远端堡垒机配置不会自动改写。Docker 网关或 SSH 主机密钥发生变化时需重新核验配置。
+网站公开浏览，无需设置 Caddy 入口密码。在 `shared/backend.env` 配置 `ADMIN_USERNAME=admin` 和至少 12 位的 `ADMIN_PASSWORD`。迁移首次创建管理员，之后环境变量不会覆盖已有密码；通过左下角头像登录后在“用户管理”中重置。旧 `SITE_USER` / `SITE_PASSWORD_HASH` 不再生效。
 
 ## GitHub 配置
 
@@ -65,7 +47,7 @@ bash deploy/setup-local-tunnel.sh /opt/aihot
 
 `.github/workflows/deploy.yml` 在 PR 时仅检查；推送 `main` 或从 main 手动触发时先检查、再部署。流水线执行后端检查/测试、前端格式检查/构建、部署配置验证。通过后打包固定提交 SHA 的 `git archive`，SSH 上传并校验 SHA256；不会包含本地未提交文件、`.env`、数据库私钥或 `.git`。服务器构建镜像，所以无需 GHCR 账号或注册表凭据。
 
-构建全部成功后，启动隧道 → 校验必要配置 → 暂停采集 → 执行数据库迁移 → 启动 API/Web/两类采集/Caddy → 检查健康状态和日志预算 → 验证公网 HTTPS 返回认证要求。最后更新 `current`，保留 `previous` 版本。部署进程通过 flock 串行执行；GitHub 同分支发布不互相取消。版本切换期间可能短暂不可用。
+构建全部成功后，校验配置与数据库直连 → 暂停采集 → 执行数据库迁移 → 启动 API/Web/两类采集/Caddy → 检查健康状态和日志预算 → 验证公网 HTTPS 无需登录返回 200。最后更新 `current`，保留 `previous` 版本。部署进程通过 flock 串行执行；GitHub 同分支发布不互相取消。版本切换期间可能短暂不可用。
 
 失败时尝试恢复上一次应用版本；数据库迁移、已经提交的数据和自动清理删除不会回滚。首次无历史版本时停止采集进程并保留排障现场。上线前应备份数据库，未来破坏性表结构改动需要另行设计迁移。每次成功后只删除本应用过期源码与镜像，保留当前和上个版本，不执行全局 Docker prune，不影响其他容器。
 
@@ -78,7 +60,7 @@ ROOT=/opt/aihot
 export AIHOT_ROOT="$ROOT" AIHOT_RELEASE_DIR="$(readlink "$ROOT/current")"
 export AIHOT_RELEASE="${AIHOT_RELEASE_DIR##*/}"
 docker compose -p aihot --env-file "$ROOT/shared/site.env" -f "$AIHOT_RELEASE_DIR/deploy/compose.prod.yaml" ps
-docker compose -p aihot --env-file "$ROOT/shared/site.env" -f "$AIHOT_RELEASE_DIR/deploy/compose.prod.yaml" logs --tail=100 -f worker knowledge-worker tunnel
+docker compose -p aihot --env-file "$ROOT/shared/site.env" -f "$AIHOT_RELEASE_DIR/deploy/compose.prod.yaml" logs --tail=100 -f worker knowledge-worker
 # 手动立即采集一轮（临时容器退出后删除）
 docker compose -p aihot --env-file "$ROOT/shared/site.env" -f "$AIHOT_RELEASE_DIR/deploy/compose.prod.yaml" run --rm worker python -m app.runtime.github_worker --once
 # 审计应用日志预算（不会输出环境变量）
@@ -87,7 +69,7 @@ python3 "$AIHOT_RELEASE_DIR/deploy/check_logs.py"
 
 ## 日志容量
 
-所有生产服务统一使用 Docker `json-file`，`max-size=10m`、`max-file=10`，每容器约 100 MiB。6 个常驻容器 + 最多 1 个迁移容器预算 **700 MiB = 734,003,200 字节 < 1 GB**，为条目边界等留有余量。达到单文件阈值自动轮转并删除最旧文件，迁移容器 `--rm`。本地 Compose 的 5 个容器也设相同轮转，总预算 500 MiB。
+所有生产服务统一使用 Docker `json-file`，`max-size=10m`、`max-file=10`，每容器约 100 MiB。5 个常驻容器 + 最多 1 个迁移容器预算 **600 MiB = 629,145,600 字节 < 1 GB**，为条目边界等留有余量。达到单文件阈值自动轮转并删除最旧文件，迁移容器 `--rm`。本地 Compose 的 5 个容器也设相同轮转，总预算 500 MiB。
 
 API、两类采集、SSH 和 Nginx/Caddy 访问与错误日志仅写标准输出/错误，不额外落入容器文件或宿主机 `.log`。部署脚本不 tee、不创建发布日志，由 GitHub 托管运行器收集其输出。部署会检查所有带 aihot 项目标签的容器的实际日志配置、运行状态及合计预算，超标则失败。
 

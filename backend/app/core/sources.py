@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 class FeedSource(BaseModel):
     enabled: bool = True
-    adapter: Literal["rss", "hackernews", "wikipedia", "json"] = "rss"
+    adapter: Literal["rss", "hackernews", "wikipedia", "json", "hotlist"] = "rss"
     item_limit: int = Field(default=100, ge=1, le=200)
     options: dict[str, str] = Field(default_factory=dict)
     name: str = Field(min_length=1, max_length=200)
@@ -185,6 +185,94 @@ DEFAULT_SOURCES.append(
             "summary_field": "story_text",
             "date_field": "created_at",
             "score_field": "points",
+        },
+    }
+)
+
+# 社区聚合 API，非平台官方服务。每个端点独立配置，失败沿用已有状态记录。
+HOT_PLATFORMS = [
+    ("百度", "baidu", "社会"),
+    ("微博", "weibo", "社会"),
+    ("知乎", "zhihu", "社会"),
+    ("知乎日报", "zhihu-daily", "文化"),
+    ("哔哩哔哩", "bilibili", "文化"),
+    ("抖音", "douyin", "社会"),
+    ("快手", "kuaishou", "社会"),
+    ("今日头条", "toutiao", "社会"),
+    ("百度贴吧", "tieba", "社会"),
+    ("腾讯新闻", "qq-news", "社会"),
+    ("澎湃新闻", "thepaper", "社会"),
+    ("网易新闻", "netease-news", "社会"),
+    ("36氪", "36kr", "商业"),
+    ("虎嗅", "huxiu", "商业"),
+    ("IT之家", "ithome", "科技"),
+    ("少数派", "sspai", "数字生活"),
+    ("掘金", "juejin", "编程语言"),
+    ("CSDN", "csdn", "编程语言"),
+    ("51CTO", "51cto", "科技"),
+    ("V2EX", "v2ex", "科技"),
+    ("吾爱破解", "52pojie", "网络安全"),
+    ("爱范儿", "ifanr", "科技"),
+    ("果壳", "guokr", "自然"),
+    ("豆瓣电影", "douban-movie", "电影"),
+    ("豆瓣小组", "douban-group", "生活"),
+    ("微信读书", "weread", "阅读"),
+    ("虎扑", "hupu", "体育"),
+    ("NGA", "ngabbs", "电竞"),
+    ("AcFun", "acfun", "动画"),
+    ("HelloGitHub", "hellogithub", "开源软件"),
+]
+# 60s 的公开接口由项目维护者提供；公共实例有限流，生产可改为自托管公网实例。
+for name, endpoint, category in [
+    ("百度", "baidu/hot", "社会"),
+    ("微博", "weibo", "社会"),
+    ("小红书", "rednote", "生活"),
+    ("知乎", "zhihu", "社会"),
+    ("哔哩哔哩", "bili", "文化"),
+    ("抖音", "douyin", "社会"),
+    ("今日头条", "toutiao", "社会"),
+    ("百度贴吧", "baidu/tieba", "社会"),
+    ("IT之家", "it-news/rank", "科技"),
+    ("懂车帝", "dongchedi", "汽车"),
+]:
+    DEFAULT_SOURCES.append(
+        {
+            "name": f"热搜 · {name}（60s 聚合）",
+            "url": f"https://60s.viki.moe/v2/{endpoint}",
+            "category": category,
+            "region": "国内",
+            "adapter": "hotlist",
+            "item_limit": 50,
+        }
+    )
+
+for name, endpoint, category in HOT_PLATFORMS:
+    DEFAULT_SOURCES.append(
+        {
+            "name": f"热搜 · {name}（DailyHotApi 备用模板）",
+            "url": f"https://dailyhot-api.vercel.app/{endpoint}",
+            "category": category,
+            "region": "国内",
+            "adapter": "hotlist",
+            "item_limit": 50,
+            "enabled": False,
+        }
+    )
+
+DEFAULT_SOURCES.append(
+    {
+        "name": "热搜 · 小红书（待测试启用）",
+        "url": "https://edith.xiaohongshu.com/api/sns/v1/search/hot_list",
+        "category": "生活",
+        "region": "国内",
+        "adapter": "hotlist",
+        "enabled": False,
+        "item_limit": 50,
+        "options": {
+            "items_path": "data.items",
+            "title_field": "word",
+            "url_field": "word",
+            "url_prefix": "https://www.xiaohongshu.com/search_result?keyword=",
         },
     }
 )

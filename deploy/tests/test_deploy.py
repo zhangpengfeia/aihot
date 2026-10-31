@@ -15,7 +15,7 @@ DEPLOY = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("check_logs", DEPLOY / "check_logs.py")
 check_logs = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check_logs)
-SERVICES = ["api", "tunnel", "web", "worker", "knowledge-worker", "caddy"]
+SERVICES = ["api", "web", "worker", "knowledge-worker", "caddy"]
 
 
 class LogBudgetTests(unittest.TestCase):
@@ -46,7 +46,7 @@ class LogBudgetTests(unittest.TestCase):
     def test_extra_containers_can_exceed_aggregate_budget(self):
         def respond(command, **kwargs):
             if command[1] == "ps":
-                return " ".join(SERVICES + ["init"] * 4)
+                return " ".join(SERVICES + ["init"] * 5)
             return self.respond(command)
 
         with (
@@ -74,7 +74,8 @@ class BootstrapTests(unittest.TestCase):
             subprocess.run(command, env=env, check=True, capture_output=True)
             self.assertEqual(backend.read_text(), "KEEP_EXISTING_CONFIGURATION=yes\n")
             self.assertTrue((root / "shared/site.env").is_file())
-            self.assertTrue((root / "shared/tunnel.env").is_file())
+            self.assertFalse((root / "shared/tunnel.env").exists())
+            self.assertFalse((root / "shared/ssh").exists())
             self.assertTrue((root / "incoming").is_dir())
             self.assertEqual((root / "shared").stat().st_mode & 0o777, 0o700)
 
@@ -101,9 +102,6 @@ class BootstrapTests(unittest.TestCase):
             for filename in (
                 "backend.env",
                 "site.env",
-                "tunnel.env",
-                "ssh/id_ed25519",
-                "ssh/known_hosts",
             ):
                 self.assertIn(f"shared/{filename}", result.stderr)
             self.assertIn("First-time setup is incomplete", result.stderr)
@@ -127,9 +125,6 @@ class RollbackTests(unittest.TestCase):
             for filename in (
                 "backend.env",
                 "site.env",
-                "tunnel.env",
-                "ssh/id_ed25519",
-                "ssh/known_hosts",
             ):
                 (shared / filename).write_text("dummy\n")
             binary = root / "bin"
