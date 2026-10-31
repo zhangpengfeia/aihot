@@ -11,13 +11,19 @@ def valid_hash(value):
     return isinstance(value, str) and BCRYPT.fullmatch(value) is not None
 
 
+def valid_exported_hash(value):
+    # Compose 为使导出模型可再次作为 Compose 输入，将字面量 $ 写成 $$。
+    # 只在 config 导出边界还原一层；原始配置及密码生成器仍使用严格校验。
+    return valid_hash(value.replace("$$", "$")) if isinstance(value, str) else False
+
+
 def main():
     try:
         config = json.load(sys.stdin)
         password_hash = config["services"]["caddy"]["environment"]["SITE_PASSWORD_HASH"]
     except (ValueError, KeyError, TypeError):
         raise SystemExit("Cannot read Caddy authentication configuration") from None
-    if not valid_hash(password_hash):
+    if not valid_exported_hash(password_hash):
         raise SystemExit(
             "SITE_PASSWORD_HASH must be a complete 60-character bcrypt hash, not a plaintext password. "
             "Run: python3 deploy/set-site-password.py /opt/aihot/shared/site.env; then rerun deployment. "

@@ -16,8 +16,20 @@ with patch.object(sys, "path", [str(DEPLOY), *sys.path]):
     setter = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(setter)
 
+checker = sys.modules["check_site_config"]
+
 
 class SitePasswordTests(unittest.TestCase):
+    def test_compose_export_escaping_is_decoded_once(self):
+        password_hash = "$2a$14$" + "A" * 53
+        self.assertTrue(checker.valid_exported_hash(password_hash))
+        self.assertTrue(checker.valid_exported_hash(password_hash.replace("$", "$$")))
+        self.assertFalse(
+            checker.valid_exported_hash(password_hash.replace("$", "$$$$"))
+        )
+        self.assertFalse(checker.valid_exported_hash("plaintext-password"))
+        self.assertFalse(setter.valid_hash(password_hash.replace("$", "$$")))
+
     def test_password_goes_to_stdin_with_line_ending_and_not_command_arguments(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "site.env"

@@ -6,6 +6,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from check_site_config import valid_exported_hash
+
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -21,7 +23,9 @@ def validate():
             "SSH_HOST=example.com\nSSH_USER=dummy\nDB_REMOTE_HOST=127.0.0.1\n"
         )
         (shared / "site.env").write_text(
-            "ACME_EMAIL=dummy@example.com\nSITE_USER=dummy\nSITE_PASSWORD_HASH=dummy\n"
+            "ACME_EMAIL=dummy@example.com\nSITE_USER=dummy\nSITE_PASSWORD_HASH='$2a$14$"
+            + "A" * 53
+            + "'\n"
         )
         env = {
             **os.environ,
@@ -47,6 +51,9 @@ def validate():
             text=True,
         )
         services = json.loads(raw)["services"]
+        assert valid_exported_hash(
+            services["caddy"]["environment"]["SITE_PASSWORD_HASH"]
+        )
     assert set(services) == {
         "tunnel",
         "init",
