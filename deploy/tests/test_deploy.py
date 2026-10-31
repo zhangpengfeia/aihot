@@ -118,6 +118,9 @@ class RollbackTests(unittest.TestCase):
                 deploy = root / "releases" / release / "deploy"
                 deploy.mkdir(parents=True)
                 (deploy / "compose.prod.yaml").write_text("services: {}\n")
+                shutil.copyfile(
+                    DEPLOY / "check_site_config.py", deploy / "check_site_config.py"
+                )
             (root / "current").symlink_to(root / "releases" / old)
             shared = root / "shared"
             (shared / "ssh").mkdir(parents=True)
@@ -143,11 +146,13 @@ class RollbackTests(unittest.TestCase):
             docker.write_text(
                 textwrap.dedent("""\
                 #!/usr/bin/env python3
-                import os, sys
+                import os, sys, json
                 from pathlib import Path
                 args = sys.argv[1:]
                 with Path(os.environ["OPERATIONS"]).open("a") as stream:
                     stream.write(os.environ["AIHOT_RELEASE"] + " " + " ".join(args) + "\\n")
+                if "config" in args and "--format" in args:
+                    print(json.dumps({"services": {"caddy": {"environment": {"SITE_PASSWORD_HASH": "$2a$14$" + "A" * 53}}}}))
                 if "run" in args and args[-1] == "init":
                     sys.exit(71)
             """)

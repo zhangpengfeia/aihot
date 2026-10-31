@@ -28,6 +28,14 @@ bash deploy/bootstrap.sh /opt/aihot
 
 用 Caddy 交互生成登录密码哈希（不要将明文密码写进命令或仓库）：
 
+推荐在服务器直接设置并保存，省去手工复制哈希：
+
+```bash
+python3 deploy/set-site-password.py /opt/aihot/shared/site.env
+```
+
+脚本两次隐藏输入网站密码，通过 stdin 传给 Caddy，配置文件中只保存 bcrypt 哈希并自动加单引号，权限设为 600；不会将明文放入命令参数或日志。部署在构建镜像前检查 Compose 解析后的哈希格式（完整 bcrypt 为 60 个字符）。也可使用下面的手动生成方式：
+
 ```bash
 docker run --rm -it --log-driver none caddy:2-alpine caddy hash-password
 ```

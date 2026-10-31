@@ -47,6 +47,7 @@ rollback() {
   exit "$result"
 }
 compose --profile tools config --quiet
+compose --profile tools config --format json | python3 "$release_dir/deploy/check_site_config.py"
 # 在改动正在运行的服务之前完成构建；全部输出由调用方终端/Actions 接收，不写日志文件。
 compose build --pull api web tunnel
 compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
