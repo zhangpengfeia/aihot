@@ -83,13 +83,18 @@ def detail(snapshot_id: int, session: Session = Depends(get_session)):
 @router.get("/api/snapshots/{snapshot_id}/markdown", response_class=PlainTextResponse)
 def markdown(snapshot_id: int, session: Session = Depends(get_session)):
     s = find_snapshot(session, snapshot_id)
+    analysis = s.analysis or {}
+    analysis_label = "大模型分析" if analysis.get("source") == "llm" else "资料规则初判"
     content = (
         f"# {s.full_name}\n\n{s.description}\n\n"
         f"- 来源：https://github.com/{s.full_name}\n"
         f"- 观测时间：{iso(s.observed_at)}\n- Stars：{s.stars}\n"
-        f"- 24 小时增长：{s.delta_24h if s.delta_24h is not None else '基线不足'}\n"
-        f"- 增长基线：{iso(s.baseline_at) or '无'}\n"
+        f"- 7 天增长：{s.delta_7d if s.delta_7d is not None else '基线不足'}\n"
+        f"- 增长基线：{iso(s.baseline_7d_at) or '无'}\n"
         f"- 识别依据：{s.evidence}\n- 许可证：{s.license or '未声明'}\n\n"
+        f"## 核心功能（{analysis_label}）\n\n{chr(10).join(analysis.get('core_features', [])) or '待分析'}\n\n"
+        f"## 适用场景\n\n{chr(10).join(analysis.get('use_cases', [])) or '待分析'}\n\n"
+        f"## 知识内容方向建议\n\n{chr(10).join(analysis.get('knowledge_suggestions', [])) or '待分析'}\n\n"
         f"## 安装方式（原文摘录，未经执行验证）\n\n{s.installation or '请查看 README'}\n\n"
         f"## 仓库 README（作者原文，未经实测）\n\n{s.readme}\n"
     )
@@ -128,11 +133,14 @@ def skills(
                 snapshot.full_name, snapshot.description, snapshot.readme
             )
             item.update(categories=categories, installation=installation)
-        if category and category not in item["categories"]:
+        if category and category not in item["categories"] + (item.get("analysis") or {}).get(
+            "domains", []
+        ):
             continue
         if (
             q.strip()
-            and q.strip().lower() not in f"{snapshot.full_name} {snapshot.description}".lower()
+            and q.strip().lower()
+            not in f"{snapshot.full_name} {snapshot.description} {item.get('analysis') or {}}".lower()
         ):
             continue
         found.append(item)

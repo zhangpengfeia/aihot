@@ -1,6 +1,7 @@
 export interface Run {
   id: number;
   slot: string;
+  scope: string | null;
   status: 'running' | 'success' | 'failed';
   started_at: string;
   finished_at: string | null;
@@ -19,6 +20,19 @@ export interface Snapshot {
   stars: number;
   forks: number;
   delta_24h: number | null;
+  delta_7d: number | null;
+  baseline_7d_at: string | null;
+  analysis: {
+    source: 'rules' | 'llm';
+    version: string;
+    model: string | null;
+    domains: string[];
+    tags: string[];
+    core_features: string[];
+    use_cases: string[];
+    knowledge_suggestions: string[];
+    evidence: string[];
+  } | null;
   language: string | null;
   license: string | null;
   pushed_at: string | null;

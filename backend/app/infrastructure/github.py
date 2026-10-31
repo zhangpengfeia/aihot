@@ -115,12 +115,15 @@ def classify(repo: dict, readme: str) -> str | None:
     """返回可追溯的识别依据。是规则识别而非人工认证，允许用户检查误判。"""
     if repo.get("archived") or repo.get("fork") or repo.get("private"):
         return None
-    if re.search(r"\bSKILL\.md\b", readme, re.IGNORECASE):
-        return "README 提及 SKILL.md"
-    topics = set(repo.get("topics", []))
-    if topics & {"agent-skills", "claude-skills", "codex-skills"}:
-        return "GitHub Topics 包含 Agent/Claude/Codex Skills"
-    text = f"{repo['full_name']} {repo.get('description') or ''} {readme}"
-    if re.search(r"\b(?:agent|claude|codex)[ -]+skills?\b", text, re.IGNORECASE):
-        return "项目资料包含 Agent/Claude/Codex Skills 关键词"
+    from app.services.skills.analysis import RuleAnalyzer
+
+    text = f"{repo['full_name']} {repo.get('description') or ''} {' '.join(repo.get('topics', []))} {readme}"
+    ai = re.search(
+        r"\b(?:ai|llm|tts|asr|rag|diffusion|transformer|whisper)\b|artificial.intelligence|machine.learning|deep.learning|人工智能|大模型|智能",
+        text,
+        re.I,
+    )
+    analysis = RuleAnalyzer().analyze(repo, readme)
+    if ai and analysis.tags:
+        return "；".join(analysis.evidence)[:500]
     return None

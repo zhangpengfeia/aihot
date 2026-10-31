@@ -8,6 +8,7 @@ def run_data(run: Run):
     return {
         "id": run.id,
         "slot": iso(run.slot),
+        "scope": run.scope,
         "status": run.status,
         "started_at": iso(run.started_at),
         "finished_at": iso(run.finished_at),
@@ -27,6 +28,9 @@ def snapshot_data(s: Snapshot):
         "stars": s.stars,
         "forks": s.forks,
         "delta_24h": s.delta_24h,
+        "delta_7d": s.delta_7d,
+        "baseline_7d_at": iso(s.baseline_7d_at),
+        "analysis": s.analysis,
         "baseline_at": iso(s.baseline_at),
         "observed_at": iso(s.observed_at),
         "language": s.language,

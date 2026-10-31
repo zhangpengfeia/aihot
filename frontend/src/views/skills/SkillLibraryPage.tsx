@@ -18,7 +18,27 @@ import { get } from '../../api/http';
 import { type Snapshot } from '../../types/skills';
 import { formatTime } from '../../utils/date';
 const { Paragraph, Text } = Typography;
-export const SKILL_CATEGORIES = ['脚本写作', '配音', '字幕', '动画', '剪辑', '其他'];
+export const SKILL_CATEGORIES = [
+  'AI短视频与影音制作',
+  'AI办公',
+  '视频生成',
+  '二维动画',
+  '三维动画',
+  '动画',
+  '数字人',
+  '脚本写作',
+  '配音',
+  '字幕',
+  '剪辑',
+  '音乐音效',
+  '文档办公',
+  '表格数据',
+  '演示文稿',
+  '会议助手',
+  '知识检索',
+  '办公自动化',
+  '其他',
+];
 export default function SkillLibraryPage({
   onSelect,
   tick,
@@ -71,14 +91,16 @@ export default function SkillLibraryPage({
       ),
     },
     {
-      title: '安装方式（原文摘录）',
+      title: '核心功能 / 适用场景',
       width: 320,
       render: (_, item) => (
         <Paragraph
           ellipsis={{ rows: 3, tooltip: false }}
           style={{ fontSize: 12, whiteSpace: 'pre-wrap', margin: 0 }}
         >
-          {item.installation}
+          {item.analysis
+            ? `${item.analysis.core_features.join('；')}。适合：${item.analysis.use_cases.join('；')}`
+            : '历史资料尚未分析，请查看详情'}
         </Paragraph>
       ),
     },
@@ -109,7 +131,7 @@ export default function SkillLibraryPage({
       <Card size="small">
         <Flex gap={12} wrap>
           <Input.Search
-            aria-label="搜索 Skill"
+            aria-label="搜索 AI 项目"
             placeholder="搜索项目名称或介绍"
             allowClear
             onSearch={(value) => {
@@ -119,7 +141,7 @@ export default function SkillLibraryPage({
             style={{ width: 300 }}
           />
           <Select
-            aria-label="Skill 用途"
+            aria-label="项目用途"
             placeholder="全部用途"
             allowClear
             value={category}
@@ -136,7 +158,7 @@ export default function SkillLibraryPage({
       {error ? (
         <Alert type="error" showIcon title={error} />
       ) : (
-        <Card className="ranking-card" title={`Skill 项目资料 · ${data.total} 个`}>
+        <Card className="ranking-card" title={`AI 项目资料 · ${data.total} 个`}>
           <Table<Snapshot>
             rowKey="id"
             columns={columns}

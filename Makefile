@@ -33,6 +33,7 @@ check:
 	cd backend && .venv/bin/ruff check app tests
 	cd backend && .venv/bin/python -m pytest
 	cd frontend && npm run format:check
+	cd frontend && npm run test:store
 
 build:
 	cd frontend && npm run build

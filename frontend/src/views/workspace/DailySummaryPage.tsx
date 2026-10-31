@@ -1,3 +1,4 @@
+import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -59,12 +60,14 @@ export function DailySummaryPage({
   const cards = layout.cards.filter((id) => user || id !== 'favorites');
   const [draft, setDraft] = useState<CardId[]>([]);
   const [editing, setEditing] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   useEffect(() => {
     setEditing(false);
+    setAddOpen(false);
     if (authLoading) return;
     activate(scope);
     void load(scope);
@@ -102,11 +105,11 @@ export function DailySummaryPage({
             ),
           },
           {
-            title: mode === 'growth' ? '24h 净增 Star' : mode === 'rise' ? '排名变化' : '本期排名',
+            title: mode === 'growth' ? '7天 净增 Star' : mode === 'rise' ? '排名变化' : '本期排名',
             width: 150,
             render: (_, item) =>
               mode === 'growth' ? (
-                <Text type="success">+{item.delta_24h?.toLocaleString()}</Text>
+                <Text type="success">+{item.delta_7d?.toLocaleString()}</Text>
               ) : mode === 'rise' ? (
                 <Tag color="green">
                   ↑ {(item as Summary['risers'][number]).rank_change} 名 · #{item.rank}
@@ -135,7 +138,7 @@ export function DailySummaryPage({
                     {data.previous
                       ? '新上榜指未进入前期累计 Star 榜，不代表新建仓库。'
                       : '只有一期成功榜单，暂不判断新上榜和名次变化。'}{' '}
-                    24h 增长使用已有观测基线，缺失时不推算。
+                    7天 增长使用已有观测基线，缺失时不推算。
                   </Text>
                 </Space>
               ) : (
@@ -158,7 +161,7 @@ export function DailySummaryPage({
         );
       case 'growth':
         return (
-          <Card title="24h Star 正增长 · 前 10 个项目">{list(data?.growth ?? [], 'growth')}</Card>
+          <Card title="7天 Star 正增长 · 前 10 个项目">{list(data?.growth ?? [], 'growth')}</Card>
         );
       case 'knowledge':
         return <KnowledgeDashboardCard tick={tick} />;
@@ -190,46 +193,41 @@ export function DailySummaryPage({
                     : '账号配置已同步'}
             </Text>
             <Button
+              type={editing ? 'primary' : 'default'}
               disabled={authLoading}
-              onClick={() => {
-                setDraft(cards);
-                setEditing(true);
-              }}
+              onClick={() => setEditing((value) => !value)}
             >
-              编辑首页卡片
+              {editing ? '完成编辑' : '编辑首页卡片'}
             </Button>
           </>
         }
       />
       <Modal
-        title="自定义首页卡片"
-        open={editing}
-        onCancel={() => setEditing(false)}
+        title="新增首页卡片"
+        open={editing && addOpen}
+        onCancel={() => setAddOpen(false)}
+        okText="添加卡片"
+        okButtonProps={{ disabled: !draft.length }}
         onOk={() => {
-          setCards(scope, draft);
-          setEditing(false);
+          setCards(scope, [...cards, ...draft.filter((id) => !cards.includes(id))]);
+          setAddOpen(false);
         }}
       >
         <Typography.Paragraph type="secondary">
-          勾选要展示的卡片，保存后可拖动每张卡片右上方的手柄排序。支持键盘空格拾取、方向键移动、空格放下。登录账号的配置会自动同步到后端。
+          选择要新增的卡片，添加后可拖拽排序。右上角 X 只从首页移除卡片，不删除业务数据。
         </Typography.Paragraph>
         <Checkbox.Group
           value={draft}
-          onChange={(values) => {
-            const selected = new Set(values as CardId[]);
-            setDraft([
-              ...draft.filter((id) => selected.has(id)),
-              ...(Object.keys(CARD_LABELS).filter(
-                (id) => selected.has(id as CardId) && !draft.includes(id as CardId),
-              ) as CardId[]),
-            ]);
-          }}
-          options={Object.entries(CARD_LABELS).map(([value, label]) => ({
-            value,
-            label,
-            disabled: value === 'favorites' && !user,
-          }))}
+          onChange={(values) => setDraft(values as CardId[])}
+          options={Object.entries(CARD_LABELS)
+            .filter(([id]) => !cards.includes(id as CardId) && (user || id !== 'favorites'))
+            .map(([value, label]) => ({ value, label }))}
         />
+        {Object.keys(CARD_LABELS)
+          .filter((id) => user || id !== 'favorites')
+          .every((id) => cards.includes(id as CardId)) && (
+          <Empty description="全部可用卡片已添加" />
+        )}
       </Modal>
       <Space orientation="vertical" className="full-width" size={16}>
         {error && (
@@ -255,7 +253,7 @@ export function DailySummaryPage({
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={({ active, over }) => {
-            if (!over || active.id === over.id) return;
+            if (!editing || !over || active.id === over.id) return;
             const from = cards.indexOf(active.id as CardId),
               to = cards.indexOf(over.id as CardId);
             if (from >= 0 && to >= 0) move(from, to);
@@ -263,17 +261,35 @@ export function DailySummaryPage({
         >
           <SortableContext items={cards} strategy={rectSortingStrategy}>
             <div className="dashboard-sort-grid">
-              {cards.map((id, index) => (
+              {cards.map((id) => (
                 <SortableDashboardCard
                   key={id}
                   id={id}
-                  first={index === 0}
-                  last={index === cards.length - 1}
-                  move={(direction) => move(index, index + direction)}
+                  editing={editing}
+                  onRemove={() =>
+                    setCards(
+                      scope,
+                      cards.filter((card) => card !== id),
+                    )
+                  }
                 >
                   {cardContent(id)}
                 </SortableDashboardCard>
               ))}
+              {editing && (
+                <Button
+                  type="dashed"
+                  className="dashboard-add-card"
+                  size="large"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    setDraft([]);
+                    setAddOpen(true);
+                  }}
+                >
+                  新增卡片
+                </Button>
+              )}
             </div>
           </SortableContext>
         </DndContext>

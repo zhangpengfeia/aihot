@@ -214,7 +214,18 @@ def collection_task(task_id: str, db: Session = Depends(get_session)):
 
 
 class DashboardWrite(BaseModel):
-    cards: list[Literal["projects", "overview", "new_entries", "risers", "growth", "knowledge", "hotlists", "favorites"]] = Field(max_length=8)
+    cards: list[
+        Literal[
+            "projects",
+            "overview",
+            "new_entries",
+            "risers",
+            "growth",
+            "knowledge",
+            "hotlists",
+            "favorites",
+        ]
+    ] = Field(max_length=8)
 
 
 @router.get("/workspace/dashboard-preferences")

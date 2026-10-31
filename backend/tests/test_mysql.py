@@ -35,7 +35,7 @@ def test_mysql_collection_atomicity_and_lock(monkeypatch):
             return {"id": 1, "full_name": "sample/skills", "stargazers_count": 20, "forks_count": 1}
 
         def readme(self, name):
-            return "Use SKILL.md"
+            return "AI text-to-video generation"
 
     github = FakeGitHub()
     try:
@@ -45,7 +45,7 @@ def test_mysql_collection_atomicity_and_lock(monkeypatch):
             assert other.scalar(text("SELECT GET_LOCK('aihot.collect', 0)")) == 1
             assert not collector.collect(settings, engine, github)
             other.execute(text("SELECT RELEASE_LOCK('aihot.collect')"))
-        later = collector.utcnow() + timedelta(minutes=30)
+        later = collector.utcnow() + timedelta(days=7)
         monkeypatch.setattr(collector, "utcnow", lambda: later)
         github.broken = True
         with pytest.raises(RuntimeError, match="测试网络故障"):

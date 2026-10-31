@@ -6,7 +6,7 @@ export const CARD_LABELS = {
   overview: '项目 · 批次概览',
   new_entries: '项目 · 新上榜',
   risers: '项目 · 排名上升',
-  growth: '项目 · 24h Star 增长',
+  growth: '项目 · Star 增长',
   knowledge: '知识库 · 最新选题',
   hotlists: '全网热搜',
   favorites: '我的收藏',

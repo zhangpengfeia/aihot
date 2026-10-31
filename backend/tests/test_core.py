@@ -56,7 +56,9 @@ def add_run(db, at, stars=100, name=None):
 
 def test_classifier_excludes_unrelated_and_forks():
     assert classify({"full_name": "school/math-skills"}, "Learning mathematics") is None
-    assert classify(repo(), "Use SKILL.md") == "README 提及 SKILL.md"
+    assert classify(repo(), "Use SKILL.md") is None
+    assert classify(repo(), "AI text-to-video generation")
+    assert classify(repo(), "AI spreadsheet assistant")
     assert classify({**repo(), "fork": True}, "SKILL.md") is None
     assert classify({**repo(), "archived": True}, "SKILL.md") is None
 

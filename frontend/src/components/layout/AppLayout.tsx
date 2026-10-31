@@ -42,7 +42,7 @@ export function AppLayout({
           {!collapsed && (
             <div>
               <strong>AIHot</strong>
-              <span>Skills 热点资料库</span>
+              <span>AI 项目周榜资料库</span>
             </div>
           )}
         </div>

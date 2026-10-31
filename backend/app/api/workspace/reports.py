@@ -59,8 +59,8 @@ def daily_summary(db: Session = Depends(get_session)):
     growth = list(
         db.scalars(
             select(Snapshot)
-            .where(Snapshot.run_id == runs[0].id, Snapshot.delta_24h > 0)
-            .order_by(Snapshot.delta_24h.desc(), Snapshot.repo_id)
+            .where(Snapshot.run_id == runs[0].id, Snapshot.delta_7d > 0)
+            .order_by(Snapshot.delta_7d.desc(), Snapshot.repo_id)
             .limit(10)
         )
     )

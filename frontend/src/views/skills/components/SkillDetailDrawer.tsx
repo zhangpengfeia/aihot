@@ -66,6 +66,50 @@ export function SkillDetailDrawer({
               </Button>
             </Space>
           </div>
+          <div>
+            <Title level={5}>核心功能与适用场景</Title>
+            <Alert
+              type="info"
+              showIcon
+              title={
+                detail.analysis?.source === 'llm'
+                  ? '大模型分析结果，请结合项目文档核对。'
+                  : '以下为项目资料关键词规则初判，具体能力与动画风格请结合原文核对。'
+              }
+            />
+            <Descriptions
+              column={1}
+              bordered
+              size="small"
+              items={[
+                {
+                  key: 'domains',
+                  label: '所属方向',
+                  children: detail.analysis?.domains.join('、') || '待分析',
+                },
+                {
+                  key: 'features',
+                  label: '核心功能',
+                  children: detail.analysis?.core_features.join('；') || '历史资料尚未分析',
+                },
+                {
+                  key: 'cases',
+                  label: '适用场景',
+                  children: detail.analysis?.use_cases.join('；') || '待分析',
+                },
+                {
+                  key: 'knowledge',
+                  label: '知识库内容建议',
+                  children: detail.analysis?.knowledge_suggestions.join('；') || '待分析',
+                },
+                {
+                  key: 'evidence',
+                  label: '判断依据',
+                  children: detail.analysis?.evidence.join('；') || '待分析',
+                },
+              ]}
+            />
+          </div>
           <Descriptions
             title="观测信息"
             column={1}
@@ -76,11 +120,11 @@ export function SkillDetailDrawer({
               { key: 'stars', label: '累计 Star', children: detail.stars.toLocaleString() },
               {
                 key: 'growth',
-                label: '24h 净增长',
+                label: '7天 净增长',
                 children:
-                  detail.delta_24h === null ? '数据积累中' : detail.delta_24h.toLocaleString(),
+                  detail.delta_7d === null ? '数据积累中' : detail.delta_7d.toLocaleString(),
               },
-              { key: 'baseline', label: '增长基线', children: formatTime(detail.baseline_at) },
+              { key: 'baseline', label: '增长基线', children: formatTime(detail.baseline_7d_at) },
               { key: 'evidence', label: '识别依据', children: detail.evidence },
               { key: 'pushed', label: '最近推送', children: formatTime(detail.pushed_at) },
               { key: 'forks', label: 'Fork 数', children: detail.forks.toLocaleString() },

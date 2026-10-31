@@ -18,10 +18,10 @@ export const navigationItems: MenuProps['items'] = [
   {
     key: 'skills',
     icon: <BookOutlined />,
-    label: 'Skill 库',
+    label: 'AI 项目库',
     children: [
       { key: 'library', label: '项目资料' },
-      { key: 'today', label: '今日热榜' },
+      { key: 'today', label: '热门周榜' },
       { key: 'history', label: '历史热榜' },
     ],
   },
@@ -48,9 +48,9 @@ export const navigationItems: MenuProps['items'] = [
 export const viewLabels: Record<ViewKey, string> = {
   hotlists: '知识库 / 全网热搜',
   users: '用户管理',
-  library: 'Skill 库 / 项目资料',
-  today: 'Skill 库 / 今日热榜',
-  history: 'Skill 库 / 历史热榜',
+  library: 'AI 项目库 / 项目资料',
+  today: 'AI 项目库 / 热门周榜',
+  history: 'AI 项目库 / 历史热榜',
   knowledge: '知识选 / 知识选题库',
   sources: '知识选 / 采集接口管理',
   categories: '分类整理',

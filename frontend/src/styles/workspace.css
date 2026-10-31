@@ -48,9 +48,10 @@
   position: relative;
 }
 .dashboard-sort-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 4px;
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  z-index: 2;
   color: #64748b;
 }
 .dashboard-drag-handle {
@@ -64,4 +65,18 @@
   .dashboard-sortable-card.dashboard-half-card {
     grid-column: span 1;
   }
+}
+
+.dashboard-editing .ant-card-head-title {
+  padding-right: 64px;
+}
+.dashboard-editing {
+  outline: 1px dashed #94a3b8;
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+.dashboard-add-card {
+  grid-column: 1 / -1;
+  min-height: 80px;
+  width: 100%;
 }

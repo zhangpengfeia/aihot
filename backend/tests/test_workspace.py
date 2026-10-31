@@ -156,13 +156,13 @@ def test_summary_ignores_failed_runs_and_uses_stable_ids(context):
     assert first["growth"] == []
     make_run(
         db,
-        AT + timedelta(days=1),
+        AT + timedelta(days=7),
         [(1, "renamed/one", 110), (2, "owner/two", 300), (3, "owner/new", 150)],
     )
     db.add(
         Run(
-            slot=AT + timedelta(days=2),
-            started_at=AT + timedelta(days=2),
+            slot=AT + timedelta(days=8),
+            started_at=AT + timedelta(days=8),
             status="failed",
             error="rate limit",
         )
@@ -174,7 +174,7 @@ def test_summary_ignores_failed_runs_and_uses_stable_ids(context):
     assert data["risers"][0]["previous_rank"] == 2
     assert data["risers"][0]["rank_change"] == 1
     assert [item["repo_id"] for item in data["growth"]] == [2, 1]
-    assert data["growth"][0]["delta_24h"] == 250
+    assert data["growth"][0]["delta_7d"] == 250
     assert data["current"]["status"] == "success"
 
 
@@ -196,7 +196,7 @@ def test_status_and_empty_summary(context, monkeypatch):
     assert status["latest"]["status"] == "failed"
     assert status["last_success"]["status"] == "success"
     assert status["last_failure"]["error"] == "rate limit"
-    assert status["next_scheduled_at"] == "2026-10-31T16:00:00+00:00"
+    assert status["next_scheduled_at"] == "2026-11-01T16:00:00+00:00"
     assert status["schedule"] == "每天 00:00"
     assert status["total_successful_runs"] == 1
     for run in db.scalars(select(Run)):

@@ -33,7 +33,7 @@ class FakeGitHub:
         self.repos = [
             {"id": index, "full_name": name, "stargazers_count": 100 - index, "forks_count": 0}
             for index, name in enumerate(
-                ["example/agent-skills", "example/other", "example/gone"], 1
+                ["example/ai-text-to-video", "example/other", "example/gone"], 1
             )
         ]
 
@@ -53,7 +53,7 @@ class FakeGitHub:
 
 def test_progress_reports_counts_after_commit(engine, caplog):
     caplog.set_level(logging.INFO)
-    assert collect(Settings(candidate_limit=20), engine, FakeGitHub())
+    assert collect(Settings(candidate_limit=100), engine, FakeGitHub())
     with Session(engine) as session:
         assert session.scalar(select(Run)).status == "success"
         assert len(list(session.scalars(select(Snapshot)))) == 1
@@ -66,10 +66,33 @@ def test_progress_reports_counts_after_commit(engine, caplog):
 def test_failure_reports_partial_progress_without_success(engine, caplog):
     caplog.set_level(logging.INFO)
     with pytest.raises(httpx.ReadTimeout):
-        collect(Settings(candidate_limit=20), engine, FakeGitHub(fail=True))
+        collect(Settings(candidate_limit=100), engine, FakeGitHub(fail=True))
     with Session(engine) as session:
         assert session.scalar(select(Run)).status == "failed"
         assert session.scalar(select(Snapshot)) is None
     assert "已检查=1，已匹配=1" in caplog.text
     assert "本轮未发布" in caplog.text
     assert "采集成功" not in caplog.text
+
+
+def test_weekly_dedup_preserves_legacy_history(engine, monkeypatch):
+    from datetime import datetime, timedelta
+
+    from app.services.skills import collector
+
+    now = datetime(2026, 11, 1, 16)
+    monkeypatch.setattr(collector, "utcnow", lambda: now)
+    with Session(engine) as db:
+        legacy = Run(slot=now, started_at=now, status="success")
+        db.add(legacy)
+        db.commit()
+    assert collect(Settings(candidate_limit=100), engine, FakeGitHub())
+    assert not collect(Settings(candidate_limit=100), engine, FakeGitHub())
+    monkeypatch.setattr(collector, "utcnow", lambda: now + timedelta(days=7))
+    assert collect(Settings(candidate_limit=100), engine, FakeGitHub())
+    with Session(engine) as db:
+        runs = list(db.scalars(select(Run).order_by(Run.id)))
+        assert len(runs) == 3
+        assert runs[0].scope is None
+        assert runs[0].status == "success"
+        assert all(run.scope == "ai-production-weekly-v1" for run in runs[1:])

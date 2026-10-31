@@ -10,9 +10,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import Settings
 from app.infrastructure.github import GitHubClient, classify
 from app.models import Ranking, Repository, Run, Snapshot
+from app.services.skills.analysis import analyze_project
 from app.services.skills.metadata import extract_metadata
 from app.services.storage import incoming_size, storage_guard
-from app.utils.time import time_slot, utcnow
+from app.utils.time import utcnow, week_slot
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,23 @@ def calculate_growth(session: Session, repo_id: int, stars: int, observed: datet
     return stars - baseline.stars, baseline.observed_at
 
 
-def persist(session: Session, run_id: int, candidates: int, records: list[tuple]):
-    """保存观测及两种 Top 20，所有历史标题、README、指标随快照一起冻结。"""
+def calculate_week_growth(session, repo_id, stars, observed):
+    target = observed - timedelta(days=7)
+    baseline = session.scalar(
+        select(Snapshot)
+        .where(
+            Snapshot.repo_id == repo_id,
+            Snapshot.observed_at <= target,
+            Snapshot.observed_at >= target - timedelta(days=1),
+        )
+        .order_by(Snapshot.observed_at.desc())
+        .limit(1)
+    )
+    return (stars - baseline.stars, baseline.observed_at) if baseline else (None, None)
+
+
+def persist(session: Session, run_id: int, candidates: int, records: list[tuple], analyzer=None):
+    """保存观测及两种 Top 100，所有历史标题、README、指标随快照一起冻结。"""
     snapshots = []
     for repo, readme, evidence, observed in records:
         entity = session.get(Repository, repo["id"])
@@ -52,8 +68,15 @@ def persist(session: Session, run_id: int, candidates: int, records: list[tuple]
         categories, installation = extract_metadata(
             repo["full_name"], repo.get("description") or "", readme
         )
+        weekly_delta, weekly_baseline = calculate_week_growth(
+            session, repo["id"], repo["stargazers_count"], observed
+        )
+        analysis = analyze_project(repo, readme, analyzer)
         snapshot = Snapshot(
-            categories=categories,
+            analysis=analysis,
+            delta_7d=weekly_delta,
+            baseline_7d_at=weekly_baseline,
+            categories=analysis["tags"] or categories,
             installation=installation,
             run_id=run_id,
             repo_id=repo["id"],
@@ -76,12 +99,12 @@ def persist(session: Session, run_id: int, candidates: int, records: list[tuple]
     orders = {
         "stars": sorted(snapshots, key=lambda s: (-s.stars, s.repo_id)),
         "growth": sorted(
-            [s for s in snapshots if s.delta_24h is not None],
-            key=lambda s: (-s.delta_24h, -s.stars, s.repo_id),
+            [s for s in snapshots if s.delta_7d is not None],
+            key=lambda s: (-s.delta_7d, -s.stars, s.repo_id),
         ),
     }
     for kind, items in orders.items():
-        for position, snapshot in enumerate(items[:20], 1):
+        for position, snapshot in enumerate(items[:100], 1):
             session.add(
                 Ranking(run_id=run_id, snapshot_id=snapshot.id, kind=kind, position=position)
             )
@@ -91,8 +114,8 @@ def persist(session: Session, run_id: int, candidates: int, records: list[tuple]
     run.error = None
 
 
-def collect(settings: Settings, engine=None, client=None, progress=None) -> bool:
-    """MySQL 连接级互斥锁跨进程防重；相同半小时的成功批次不会重复写入。"""
+def collect(settings: Settings, engine=None, client=None, progress=None, analyzer=None) -> bool:
+    """MySQL 连接级互斥锁跨进程防重；相同周的成功批次不会重复写入。"""
     from app.core.database import get_engine
 
     progress = progress or (lambda percent, message: None)
@@ -105,14 +128,24 @@ def collect(settings: Settings, engine=None, client=None, progress=None) -> bool
         github = None
         try:
             factory = sessionmaker(engine, expire_on_commit=False)
-            slot = time_slot(utcnow())
+            now = utcnow()
+            slot = week_slot(now)
             with factory.begin() as session:
-                run = session.scalar(select(Run).where(Run.slot == slot))
+                run = session.scalar(
+                    select(Run).where(
+                        Run.scope == "ai-production-weekly-v1",
+                        Run.slot >= slot,
+                        Run.slot < slot + timedelta(days=7),
+                    )
+                )
                 if run and run.status == "success":
-                    logger.info("跳过 GitHub 采集：当前时间窗口已有成功批次，批次=%s", run.id)
+                    logger.info("跳过 GitHub 采集：当前周已有成功批次，批次=%s", run.id)
                     return False
                 if not run:
-                    run = Run(slot=slot, started_at=utcnow())
+                    run_slot = now.replace(microsecond=0)
+                    while session.scalar(select(Run.id).where(Run.slot == run_slot)) is not None:
+                        run_slot += timedelta(seconds=1)
+                    run = Run(slot=run_slot, scope="ai-production-weekly-v1", started_at=now)
                     session.add(run)
                     session.flush()
                 run.status, run.started_at, run.error = "running", utcnow(), None
@@ -140,13 +173,11 @@ def collect(settings: Settings, engine=None, client=None, progress=None) -> bool
                     pass
                 progress(0, "正在搜索 GitHub 项目")
                 discovered = github.discover(settings.search_queries)
-                # 选择累计热度候选及最近更新候选，二者各占一半后去重。
-                half = settings.candidate_limit // 2
-                popular = sorted(discovered, key=lambda r: -r["stargazers_count"])[:half]
-                recent = sorted(discovered, key=lambda r: r.get("pushed_at") or "", reverse=True)[
-                    : settings.candidate_limit - half
+                # 按累计 Star 选候选，榜单只代表已采集且通过规则识别的范围。
+                popular = sorted(discovered, key=lambda r: (-r["stargazers_count"], r["id"]))[
+                    : settings.candidate_limit
                 ]
-                pool = {r["id"]: r for r in popular + recent}
+                pool = {r["id"]: r for r in popular}
                 selected_count = len(pool)
                 # 继续观察历史项目，避免仓库掉出搜索窗口后失去增长基线。
                 # 候选也重新获取统计，避免以搜索索引的缓存值计算增长。
@@ -194,7 +225,7 @@ def collect(settings: Settings, engine=None, client=None, progress=None) -> bool
                 progress(95, f"正在入库：{len(records)} 个项目")
                 with storage_guard(engine, settings, incoming_size(records)):
                     with factory.begin() as session:
-                        persist(session, run_id, len(pool), records)
+                        persist(session, run_id, len(pool), records, analyzer)
                 logger.info(
                     "GitHub 采集成功：批次=%s，候选=%s，已检查=%s，已入库=%s，未匹配=%s，跳过=%s，耗时=%.1f秒",
                     run_id,

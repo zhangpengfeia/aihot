@@ -41,6 +41,7 @@ jobs:
         run: |
           npm ci
           npm run format:check
+          npm run test:store
           npm run build
       - name: Validate deployment configuration and scripts
         run: |

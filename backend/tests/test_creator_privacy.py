@@ -72,7 +72,12 @@ def test_private_workspace_and_dashboard(context):  # noqa: F811
 def test_dashboard_preserves_individual_card_order(context):  # noqa: F811
     client, _, _ = context
     cards = ["hotlists", "growth", "risers", "overview", "knowledge", "new_entries", "favorites"]
-    assert client.put('/api/workspace/dashboard-preferences', json={"cards":cards}).json()["cards"] == cards
-    assert client.get('/api/workspace/dashboard-preferences').json()["cards"] == cards
-    assert client.put('/api/workspace/dashboard-preferences', json={"cards":[]}).json()["cards"] == []
-    assert client.get('/api/workspace/dashboard-preferences').json()["cards"] == []
+    assert (
+        client.put("/api/workspace/dashboard-preferences", json={"cards": cards}).json()["cards"]
+        == cards
+    )
+    assert client.get("/api/workspace/dashboard-preferences").json()["cards"] == cards
+    assert (
+        client.put("/api/workspace/dashboard-preferences", json={"cards": []}).json()["cards"] == []
+    )
+    assert client.get("/api/workspace/dashboard-preferences").json()["cards"] == []

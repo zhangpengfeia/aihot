@@ -55,6 +55,19 @@ def migrate(engine):
                 connection.execute(
                     text(f"CREATE UNIQUE INDEX {index_name} ON {table} ({', '.join(key_columns)})")
                 )
+    with engine.begin() as connection:
+        if "scope" not in {col["name"] for col in inspect(engine).get_columns("collection_runs")}:
+            connection.execute(
+                text("ALTER TABLE collection_runs ADD COLUMN scope VARCHAR(40) NULL")
+            )
+        snapshot_columns = {col["name"] for col in inspect(engine).get_columns("snapshots")}
+        for name, ddl in {
+            "analysis": "JSON NULL",
+            "delta_7d": "INTEGER NULL",
+            "baseline_7d_at": "DATETIME NULL",
+        }.items():
+            if name not in snapshot_columns:
+                connection.execute(text(f"ALTER TABLE snapshots ADD COLUMN {name} {ddl}"))
     columns = {column["name"] for column in inspect(engine).get_columns("snapshots")}
     topic_columns = {column["name"] for column in inspect(engine).get_columns("knowledge_topics")}
     managed_columns = {

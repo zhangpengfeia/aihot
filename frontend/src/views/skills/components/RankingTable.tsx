@@ -44,7 +44,7 @@ export function RankingTable({
             <Tag variant="filled">{item.language || '未标注语言'}</Tag>
             <Tag variant="filled">{item.license || '未声明许可证'}</Tag>
             <Tag color="blue" variant="filled">
-              Skills 规则匹配
+              AI 场景规则匹配
             </Tag>
             {item.categories?.map((category) => (
               <Tag color="geekblue" key={category}>
@@ -72,8 +72,8 @@ export function RankingTable({
       ),
     },
     {
-      title: '24h 净增长',
-      dataIndex: 'delta_24h',
+      title: '7天 净增长',
+      dataIndex: 'delta_7d',
       width: 145,
       align: 'right',
       render: (value: number | null) =>

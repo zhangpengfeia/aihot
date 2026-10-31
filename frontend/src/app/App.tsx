@@ -69,7 +69,7 @@ export default function App() {
       content = (
         <>
           <PageHeading
-            title="Skill 库"
+            title="AI 项目库"
             description="按创作用途整理项目，保留安装说明与许可证。"
             refresh={refresh}
             loading={false}

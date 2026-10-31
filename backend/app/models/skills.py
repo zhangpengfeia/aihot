@@ -22,8 +22,9 @@ from app.core.database import Base
 class Run(Base):
     __tablename__ = "collection_runs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    # 同一半小时窗口只有一个批次，失败批次允许重试。
+    # slot 保留批次观测时间；scope 区分旧 Skills 批次与新 AI 项目周榜。
     slot: Mapped[datetime] = mapped_column(DateTime, unique=True)
+    scope: Mapped[str | None] = mapped_column(String(40))
     status: Mapped[str] = mapped_column(String(20), default="running")
     started_at: Mapped[datetime] = mapped_column(DateTime)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -62,6 +63,9 @@ class Snapshot(Base):
     delta_24h: Mapped[int | None] = mapped_column(Integer)
     baseline_at: Mapped[datetime | None] = mapped_column(DateTime)
     categories: Mapped[list[str] | None] = mapped_column(JSON)
+    analysis: Mapped[dict | None] = mapped_column(JSON)
+    delta_7d: Mapped[int | None] = mapped_column(Integer)
+    baseline_7d_at: Mapped[datetime | None] = mapped_column(DateTime)
     installation: Mapped[str | None] = mapped_column(Text)
 
 
