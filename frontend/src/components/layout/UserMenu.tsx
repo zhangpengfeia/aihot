@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Avatar, Button, Dropdown, Form, Input, Modal, message } from 'antd';
 import {
+  ApiOutlined,
   ClockCircleOutlined,
   LoginOutlined,
   LogoutOutlined,
@@ -44,6 +45,12 @@ export function UserMenu({
             },
             ...(user?.role === 'admin'
               ? [
+                  {
+                    key: 'sources',
+                    icon: <ApiOutlined />,
+                    label: '采集接口管理',
+                    onClick: () => onNavigate('sources'),
+                  },
                   {
                     key: 'users',
                     icon: <TeamOutlined />,

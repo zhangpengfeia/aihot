@@ -213,19 +213,29 @@ def collection_task(task_id: str, db: Session = Depends(get_session)):
     }
 
 
+DashboardCard = Literal[
+    "projects", "overview", "new_entries", "risers", "growth", "knowledge", "hotlists", "favorites"
+]
+CardWidth = Literal["full", "half"]
+DEFAULT_CARD_WIDTHS = {
+    key: ("half" if key in {"new_entries", "risers"} else "full")
+    for key in ("overview", "new_entries", "risers", "growth", "knowledge", "hotlists", "favorites")
+}
+
+
 class DashboardWrite(BaseModel):
-    cards: list[
-        Literal[
-            "projects",
-            "overview",
-            "new_entries",
-            "risers",
-            "growth",
-            "knowledge",
-            "hotlists",
-            "favorites",
-        ]
-    ] = Field(max_length=8)
+    cards: list[DashboardCard] = Field(max_length=8)
+    widths: dict[DashboardCard, CardWidth] | None = None
+
+
+def dashboard_layout(row):
+    saved = row.cards if row else ["projects", "knowledge", "hotlists"]
+    if isinstance(saved, list):
+        return {"cards": saved, "widths": dict(DEFAULT_CARD_WIDTHS)}
+    return {
+        "cards": saved.get("cards", []),
+        "widths": {**DEFAULT_CARD_WIDTHS, **saved.get("widths", {})},
+    }
 
 
 @router.get("/workspace/dashboard-preferences")
@@ -234,8 +244,7 @@ def dashboard_preferences(user=Depends(current_user), db: Session = Depends(get_
 
     if user is None:
         raise HTTPException(401, "请先登录")
-    row = db.get(DashboardPreference, user.id)
-    return {"cards": row.cards if row else ["projects", "knowledge", "hotlists"]}
+    return dashboard_layout(db.get(DashboardPreference, user.id))
 
 
 @router.put("/workspace/dashboard-preferences")
@@ -247,9 +256,14 @@ def save_dashboard(
     if user is None:
         raise HTTPException(401, "请先登录")
     row = db.get(DashboardPreference, user.id)
+    previous = dashboard_layout(row)
     if row is None:
         row = DashboardPreference(user_id=user.id)
         db.add(row)
-    row.cards = list(dict.fromkeys(body.cards))
+    # 旧客户端只发送顺序时，保留已经配置的卡片宽度。
+    row.cards = {
+        "cards": list(dict.fromkeys(body.cards)),
+        "widths": {**previous["widths"], **(body.widths or {})},
+    }
     db.commit()
-    return {"cards": row.cards}
+    return dashboard_layout(row)

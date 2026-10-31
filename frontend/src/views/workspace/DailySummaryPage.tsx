@@ -1,32 +1,17 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { useEffect, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Checkbox,
-  Empty,
-  Modal,
-  Space,
-  Spin,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Card, Checkbox, Empty, Modal, Space, Table, Tag, Typography } from 'antd';
 import {
   DndContext,
+  DragOverlay,
+  MeasuringStrategy,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import {
-  arrayMove,
-  rectSortingStrategy,
-  SortableContext,
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useAuth } from '../../app/auth';
 import { PageHeading as Heading } from '../../components/common/PageHeading';
 import { useResource } from '../../hooks/useResource';
@@ -40,7 +25,7 @@ import {
 import type { Snapshot } from '../../types/skills';
 import type { Summary } from '../../types/workspace-responses';
 import { formatTime } from '../../utils/date';
-import { HotListsPage } from '../knowledge/HotListsPage';
+import { HotSearchCard } from './HotSearchCard';
 import { FavoritesDashboardCard, KnowledgeDashboardCard } from './DashboardExtras';
 import { SortableDashboardCard } from './SortableDashboardCard';
 const { Text } = Typography;
@@ -56,16 +41,22 @@ export function DailySummaryPage({
   const layout = useDashboardStore((state) => state.layouts[scope] ?? DEFAULT_LAYOUT);
   const syncing = useDashboardStore((state) => state.syncing[scope] ?? false);
   const error = useDashboardStore((state) => state.errors[scope] ?? '');
-  const { activate, load, setCards, sync } = useDashboardStore.getState();
+  const { activate, load, setCards, setWidth, sync } = useDashboardStore.getState();
   const cards = layout.cards.filter((id) => user || id !== 'favorites');
-  const [draft, setDraft] = useState<CardId[]>([]);
+  const [previewOrder, setPreviewOrder] = useState<CardId[] | null>(null);
+  const [activeCard, setActiveCard] = useState<CardId | null>(null);
   const [editing, setEditing] = useState(false);
+  const lastOver = useRef<string | null>(null);
+  const displayCards = previewOrder ?? cards;
+  const [draft, setDraft] = useState<CardId[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   useEffect(() => {
+    setPreviewOrder(null);
+    setActiveCard(null);
     setEditing(false);
     setAddOpen(false);
     if (authLoading) return;
@@ -83,9 +74,6 @@ export function DailySummaryPage({
   }, [scope, authLoading, activate, load]);
   const resource = useResource<Summary>('/workspace/daily-summary', tick);
   const data = resource.data;
-  const move = (from: number, to: number) => {
-    if (to >= 0 && to < cards.length) setCards(scope, arrayMove(cards, from, to));
-  };
   function list(items: Snapshot[], mode: 'new' | 'rise' | 'growth') {
     return (
       <Table<Snapshot>
@@ -126,26 +114,24 @@ export function DailySummaryPage({
     switch (id) {
       case 'overview':
         return (
-          <Spin spinning={resource.loading}>
-            <Card title="项目 · 批次概览">
-              {data?.current ? (
-                <Space orientation="vertical">
-                  <Text>
-                    本期：{formatTime(data.current.finished_at)} · 前期：
-                    {formatTime(data.previous?.finished_at ?? null)}
-                  </Text>
-                  <Text type="secondary">
-                    {data.previous
-                      ? '新上榜指未进入前期累计 Star 榜，不代表新建仓库。'
-                      : '只有一期成功榜单，暂不判断新上榜和名次变化。'}{' '}
-                    7天 增长使用已有观测基线，缺失时不推算。
-                  </Text>
-                </Space>
-              ) : (
-                <Empty description="暂无成功采集记录" />
-              )}
-            </Card>
-          </Spin>
+          <Card title="项目 · 批次概览" loading={resource.loading}>
+            {data?.current ? (
+              <Space orientation="vertical">
+                <Text>
+                  本期：{formatTime(data.current.finished_at)} · 前期：
+                  {formatTime(data.previous?.finished_at ?? null)}
+                </Text>
+                <Text type="secondary">
+                  {data.previous
+                    ? '新上榜指未进入前期累计 Star 榜，不代表新建仓库。'
+                    : '只有一期成功榜单，暂不判断新上榜和名次变化。'}{' '}
+                  7天 增长使用已有观测基线，缺失时不推算。
+                </Text>
+              </Space>
+            ) : (
+              <Empty description="暂无成功采集记录" />
+            )}
+          </Card>
         );
       case 'new_entries':
         return (
@@ -167,8 +153,8 @@ export function DailySummaryPage({
         return <KnowledgeDashboardCard tick={tick} />;
       case 'hotlists':
         return (
-          <Card title="全网热搜 · 来源速览">
-            <HotListsPage tick={tick} compact />
+          <Card title="全网热搜" className="dashboard-hot-search-card">
+            <HotSearchCard tick={tick} />
           </Card>
         );
       case 'favorites':
@@ -248,24 +234,54 @@ export function DailySummaryPage({
           />
         )}
         {resource.error && <Alert type="error" title={resource.error} />}
-        {!cards.length && <Empty description="尚未选择首页卡片，点击编辑首页卡片添加" />}
+        {!displayCards.length && (
+          <Empty description="此分类暂无展示卡片，可点击编辑首页卡片添加或调整筛选" />
+        )}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragEnd={({ active, over }) => {
-            if (!editing || !over || active.id === over.id) return;
-            const from = cards.indexOf(active.id as CardId),
-              to = cards.indexOf(over.id as CardId);
-            if (from >= 0 && to >= 0) move(from, to);
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+          onDragStart={({ active }) => {
+            if (!editing) return;
+            setActiveCard(active.id as CardId);
+            setPreviewOrder([...cards]);
+            lastOver.current = null;
+          }}
+          onDragOver={({ active, over, activatorEvent }) => {
+            if (!editing || !over) return;
+            if (active.id === over.id) {
+              lastOver.current = null;
+              return;
+            }
+            if (!(activatorEvent instanceof KeyboardEvent) && lastOver.current === String(over.id))
+              return;
+            lastOver.current = String(over.id);
+            setPreviewOrder((previous) => {
+              const order = previous ?? cards;
+              const from = order.indexOf(active.id as CardId),
+                to = order.indexOf(over.id as CardId);
+              return from < 0 || to < 0 ? order : arrayMove(order, from, to);
+            });
+          }}
+          onDragCancel={() => {
+            setPreviewOrder(null);
+            setActiveCard(null);
+          }}
+          onDragEnd={({ over }) => {
+            if (editing && over && previewOrder) setCards(scope, previewOrder);
+            setPreviewOrder(null);
+            setActiveCard(null);
           }}
         >
-          <SortableContext items={cards} strategy={rectSortingStrategy}>
+          <SortableContext items={displayCards} strategy={() => null}>
             <div className="dashboard-sort-grid">
-              {cards.map((id) => (
+              {displayCards.map((id) => (
                 <SortableDashboardCard
                   key={id}
                   id={id}
                   editing={editing}
+                  width={layout.widths[id]}
+                  onWidthChange={(value) => setWidth(scope, id, value)}
                   onRemove={() =>
                     setCards(
                       scope,
@@ -292,6 +308,16 @@ export function DailySummaryPage({
               )}
             </div>
           </SortableContext>
+          <DragOverlay dropAnimation={null}>
+            {activeCard && (
+              <Card className="dashboard-drag-preview" size="small">
+                <Space>
+                  <strong>{CARD_LABELS[activeCard]}</strong>
+                  <Tag>{layout.widths[activeCard] === 'half' ? '半行' : '整行'}</Tag>
+                </Space>
+              </Card>
+            )}
+          </DragOverlay>
         </DndContext>
       </Space>
     </>

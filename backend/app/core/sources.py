@@ -34,6 +34,7 @@ class FeedSource(BaseModel):
         ):
             raise ValueError("百科接口请填写官方 /api/rest_v1/feed/onthisday/events 地址")
         allowed = {
+            "platform_id",
             "items_path",
             "title_field",
             "url_field",
@@ -276,3 +277,24 @@ DEFAULT_SOURCES.append(
         },
     }
 )
+
+# 已经由应用实际传输层验证的百度/小红书备用公开聚合接口。
+for platform_id, name, provider_type, category in [
+    ("baidu", "百度", "baidu", "社会"),
+    ("xiaohongshu", "小红书", "xiaohongshu", "生活"),
+]:
+    DEFAULT_SOURCES.append(
+        {
+            "name": f"热搜 · {name}（UAPI 聚合）",
+            "url": f"https://uapis.cn/api/v1/misc/hotboard?type={provider_type}",
+            "category": category,
+            "region": "国内",
+            "adapter": "hotlist",
+            "item_limit": 50,
+            "options": {
+                "items_path": "list",
+                "score_field": "hot_value",
+                "platform_id": platform_id,
+            },
+        }
+    )

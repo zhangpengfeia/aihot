@@ -18,7 +18,13 @@ def get_engine():
         get_settings().database_url,
         pool_pre_ping=True,
         pool_recycle=1800,
-        connect_args={"connect_timeout": 5, "read_timeout": 20, "write_timeout": 20},
+        connect_args={
+            "connect_timeout": 5,
+            "read_timeout": 20,
+            "write_timeout": 20,
+            # 先由服务端终止元数据锁等待，避免客户端超时后留下排队 DDL。
+            "init_command": "SET SESSION lock_wait_timeout=10",
+        },
     )
 
 

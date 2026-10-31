@@ -46,10 +46,11 @@ def require_admin(user=Depends(current_user)):
 
 
 def protect_management(request: Request, user=Depends(current_user)):
-    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+    management = "/manage" in request.url.path or "/admin" in request.url.path
+    if management or request.method not in {"GET", "HEAD", "OPTIONS"}:
         if not user:
             raise HTTPException(401, "请先登录")
-        if ("/manage" in request.url.path or "/admin" in request.url.path) and user.role != "admin":
+        if management and user.role != "admin":
             raise HTTPException(403, "此操作需要管理员权限")
 
 

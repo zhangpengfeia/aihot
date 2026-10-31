@@ -75,7 +75,7 @@ def test_failure_reports_partial_progress_without_success(engine, caplog):
     assert "采集成功" not in caplog.text
 
 
-def test_weekly_dedup_preserves_legacy_history(engine, monkeypatch):
+def test_daily_dedup_preserves_legacy_history(engine, monkeypatch):
     from datetime import datetime, timedelta
 
     from app.services.skills import collector
@@ -88,11 +88,11 @@ def test_weekly_dedup_preserves_legacy_history(engine, monkeypatch):
         db.commit()
     assert collect(Settings(candidate_limit=100), engine, FakeGitHub())
     assert not collect(Settings(candidate_limit=100), engine, FakeGitHub())
-    monkeypatch.setattr(collector, "utcnow", lambda: now + timedelta(days=7))
+    monkeypatch.setattr(collector, "utcnow", lambda: now + timedelta(days=1))
     assert collect(Settings(candidate_limit=100), engine, FakeGitHub())
     with Session(engine) as db:
         runs = list(db.scalars(select(Run).order_by(Run.id)))
         assert len(runs) == 3
         assert runs[0].scope is None
         assert runs[0].status == "success"
-        assert all(run.scope == "ai-production-weekly-v1" for run in runs[1:])
+        assert all(run.scope == "ai-video-weekly-v2" for run in runs[1:])

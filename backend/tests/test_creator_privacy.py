@@ -81,3 +81,44 @@ def test_dashboard_preserves_individual_card_order(context):  # noqa: F811
         client.put("/api/workspace/dashboard-preferences", json={"cards": []}).json()["cards"] == []
     )
     assert client.get("/api/workspace/dashboard-preferences").json()["cards"] == []
+
+
+def test_dashboard_widths_legacy_and_account_isolation(context):  # noqa: F811
+    from app.models.users import DashboardPreference
+
+    client, db, _ = context
+    db.add(DashboardPreference(user_id=999, cards=["knowledge", "projects"]))
+    db.commit()
+    old = client.get("/api/workspace/dashboard-preferences").json()
+    assert old["cards"] == ["knowledge", "projects"]
+    assert old["widths"]["new_entries"] == "half"
+    saved = client.put(
+        "/api/workspace/dashboard-preferences",
+        json={"cards": ["knowledge", "growth"], "widths": {"knowledge": "half", "growth": "half"}},
+    )
+    assert saved.status_code == 200
+    assert saved.json()["widths"]["knowledge"] == "half"
+    client.put("/api/workspace/dashboard-preferences", json={"cards": ["growth", "knowledge"]})
+    assert (
+        client.get("/api/workspace/dashboard-preferences").json()["widths"]["knowledge"] == "half"
+    )
+    assert (
+        client.put(
+            "/api/workspace/dashboard-preferences",
+            json={"cards": [], "widths": {"growth": "quarter"}},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.put(
+            "/api/workspace/dashboard-preferences",
+            json={"cards": [], "widths": {"unknown": "half"}},
+        ).status_code
+        == 422
+    )
+    app.dependency_overrides[current_user] = lambda: SimpleNamespace(
+        id=1000, role="user", enabled=True
+    )
+    assert (
+        client.get("/api/workspace/dashboard-preferences").json()["widths"]["knowledge"] == "full"
+    )

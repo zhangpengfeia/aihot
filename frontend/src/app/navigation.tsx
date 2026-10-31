@@ -21,7 +21,7 @@ export const navigationItems: MenuProps['items'] = [
     label: 'AI 项目库',
     children: [
       { key: 'library', label: '项目资料' },
-      { key: 'today', label: '热门周榜' },
+      { key: 'today', label: '热门项目' },
       { key: 'history', label: '历史热榜' },
     ],
   },
@@ -32,7 +32,6 @@ export const navigationItems: MenuProps['items'] = [
     children: [
       { key: 'knowledge', label: '知识选题库' },
       { key: 'hotlists', label: '全网热搜' },
-      { key: 'sources', label: '采集接口管理' },
     ],
   },
   {
@@ -49,10 +48,10 @@ export const viewLabels: Record<ViewKey, string> = {
   hotlists: '知识库 / 全网热搜',
   users: '用户管理',
   library: 'AI 项目库 / 项目资料',
-  today: 'AI 项目库 / 热门周榜',
+  today: 'AI 项目库 / 热门项目',
   history: 'AI 项目库 / 历史热榜',
   knowledge: '知识选 / 知识选题库',
-  sources: '知识选 / 采集接口管理',
+  sources: '管理员 / 采集接口管理',
   categories: '分类整理',
   favorites: '收藏与个人备注',
   summary: '首页看板',

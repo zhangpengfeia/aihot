@@ -25,3 +25,12 @@ def week_slot(now: datetime) -> datetime:
         hour=0, minute=0, second=0, microsecond=0
     )
     return monday.astimezone(UTC).replace(tzinfo=None)
+
+
+def day_slot(now: datetime) -> datetime:
+    local = now.replace(tzinfo=UTC).astimezone(SHANGHAI)
+    return (
+        local.replace(hour=0, minute=0, second=0, microsecond=0)
+        .astimezone(UTC)
+        .replace(tzinfo=None)
+    )

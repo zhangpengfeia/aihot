@@ -1,3 +1,4 @@
+import { CategoryPicker } from './CategoryPicker';
 import { Card, DatePicker, Flex, Input, Select } from 'antd';
 import type { useKnowledgeTopics } from '../hooks/useKnowledgeTopics';
 export function KnowledgeFilters(state: ReturnType<typeof useKnowledgeTopics>) {
@@ -17,43 +18,16 @@ export function KnowledgeFilters(state: ReturnType<typeof useKnowledgeTopics>) {
     setSortBy,
     setDay,
   } = state;
-  const seen = new Set(meta.categories);
-  const groups = Object.entries(meta.tag_groups ?? {})
-    .map(([group, tags]) => ({
-      label: group,
-      options: tags
-        .filter((value) => {
-          if (seen.has(value)) return false;
-          seen.add(value);
-          return true;
-        })
-        .map((value) => ({ label: value, value })),
-    }))
-    .filter((group) => group.options.length > 0);
   return (
     <Card size="small">
       <Flex gap={12} wrap>
-        <Select
-          aria-label="内容分类与标签"
-          mode="multiple"
-          placeholder="内容分类 / 热门与小众标签（可多选）"
-          showSearch
-          allowClear
-          maxTagCount="responsive"
-          optionFilterProp="label"
+        <CategoryPicker
+          meta={meta}
           value={labels}
           onChange={(values) => {
             setLabels(values);
             setPage(1);
           }}
-          style={{ width: 360, maxWidth: '100%' }}
-          options={[
-            {
-              label: '已有内容分类',
-              options: meta.categories.map((value) => ({ label: value, value })),
-            },
-            ...groups,
-          ]}
         />
         <Select
           aria-label="题材地区"

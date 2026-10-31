@@ -1,0 +1,41 @@
+.category-picker-trigger {
+  width: 360px;
+  max-width: 100%;
+  display: inline-flex;
+  justify-content: flex-start;
+}
+.category-picker-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.category-picker-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  align-content: flex-start;
+  height: min(340px, 40dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 2px 10px 2px 2px;
+}
+.category-picker-tags .ant-btn {
+  flex: 0 0 auto;
+  max-width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 4px 14px;
+  white-space: normal;
+}
+.category-picker-tags .ant-btn > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.category-picker-empty {
+  width: 100%;
+}

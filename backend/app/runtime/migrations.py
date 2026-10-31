@@ -11,8 +11,16 @@ from app.core.database import Base, get_engine
 
 
 def migrate(engine):
+    from app.runtime.schema_changes import run_schema_change
+
+    return run_schema_change(engine, lambda: _migrate(engine))
+
+
+def _migrate(engine):
     # checkfirst 默认开启；新增配置与规则表，重复迁移不覆盖用户资料。
-    Base.metadata.create_all(engine)
+    from app.runtime.schema_changes import create_missing_tables
+
+    create_missing_tables(engine, Base.metadata)
     from app.core.auth import seed_admin
     from app.core.config import get_settings
 
@@ -149,5 +157,8 @@ def migrate(engine):
 
 
 if __name__ == "__main__":
-    migrate(get_engine())
+    try:
+        migrate(get_engine())
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from None
     print("数据库结构升级完成")

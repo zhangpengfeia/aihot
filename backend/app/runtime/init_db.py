@@ -5,16 +5,28 @@ from app.core.database import Base, get_engine
 
 
 def main():
-    Base.metadata.create_all(get_engine())
+    from app.runtime.schema_changes import run_schema_change
+
+    engine = get_engine()
+    run_schema_change(engine, lambda: initialize(engine))
+    print("MySQL 数据表初始化完成")
+
+
+def initialize(engine):
+    from app.runtime.schema_changes import create_missing_tables
+
+    create_missing_tables(engine, Base.metadata)
     from sqlalchemy.orm import Session
 
     from app.core.auth import seed_admin
     from app.core.config import get_settings
 
-    with Session(get_engine()) as db:
+    with Session(engine) as db:
         seed_admin(db, get_settings())
-    print("MySQL 数据表初始化完成")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from None

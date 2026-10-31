@@ -9,126 +9,142 @@ import {
   Flex,
   Input,
   Row,
+  Segmented,
   Space,
   Tag,
   Typography,
 } from 'antd';
 import { useResource } from '../../hooks/useResource';
 import { formatTime } from '../../utils/date';
+import { legacyPlatforms } from '../../utils/hotlists';
+import type { HotPlatform, HotSource } from '../../types/hotlists';
 import { PersonalButton, AddToBoard } from '../../components/workspace/PersonalActions';
-export interface HotSource {
-  id: number;
-  name: string;
-  enabled: boolean;
-  status: string;
-  error: string | null;
-  observed_at: string | null;
-  items: {
-    id: number;
-    title: string;
-    source_url: string;
-    score: number | null;
-    score_label?: string | null;
-    rank: number;
-  }[];
-}
-export function HotListsPage({ tick, compact = false }: { tick: number; compact?: boolean }) {
-  const resource = useResource<{ items: HotSource[] }>('/knowledge/hotlists', tick);
-  const [q, setQ] = useState('');
-  const [platform, setPlatform] = useState<number | null>(null);
-  const sources = resource.data?.items ?? [];
+import { PlatformPicker } from './components/PlatformPicker';
+export type { HotSource } from '../../types/hotlists';
+export function HotListsPage({
+  tick,
+  compact = false,
+  platformIds = [],
+}: {
+  tick: number;
+  compact?: boolean;
+  platformIds?: string[];
+}) {
+  const resource = useResource<{ items: HotSource[]; platforms?: HotPlatform[] }>(
+    '/knowledge/hotlists',
+    tick,
+  );
+  const [query, setQuery] = useState('');
+  const [region, setRegion] = useState('全部');
+  const [selected, setSelected] = useState<string[]>([]);
+  const sources = resource.data?.platforms ?? legacyPlatforms(resource.data?.items ?? []);
+  const filters = compact ? platformIds : selected;
   const visible = sources.filter(
     (source) =>
-      (platform === null || source.id === platform) &&
-      (!q || source.name.includes(q) || source.items.some((i) => i.title.includes(q))),
+      (region === '全部' || source.region === region) &&
+      (!filters.length || filters.includes(source.id)) &&
+      (!query ||
+        `${source.name} ${source.category}`.toLowerCase().includes(query.toLowerCase()) ||
+        source.items.some((item) => item.title.toLowerCase().includes(query.toLowerCase()))),
   );
+  const displayed =
+    compact && !filters.length
+      ? visible
+          .filter((source) => source.connection_status === 'configured')
+          .sort((a, b) => Number(!!b.items.length) - Number(!!a.items.length))
+          .slice(0, 3)
+      : visible;
   return (
     <Space orientation="vertical" className="full-width" size={16}>
       {!compact && (
-        <Flex justify="space-between" wrap gap={12}>
-          <div>
-            <Typography.Title level={2}>全网热搜</Typography.Title>
-            <Typography.Text type="secondary">
-              按来源展示最后一次成功采集的榜单，保留返回顺序；各平台指标不可直接比较。
-            </Typography.Text>
-          </div>
-          <Button onClick={resource.refresh} loading={resource.loading}>
-            刷新已存榜单
-          </Button>
-        </Flex>
-      )}
-      {resource.error && <Alert type="error" title={resource.error} />}
-      {!compact && (
         <>
-          <Alert
-            type="info"
-            title="百度、微博、小红书等使用社区聚合 API，非平台官方服务。备用模板需测试启用，刷新页面不会执行采集。"
-          />
-          <Input.Search
-            placeholder="搜索平台或热搜词"
-            allowClear
-            onSearch={setQ}
-            aria-label="搜索平台或热搜词"
-          />
-          <Flex gap={8} wrap>
-            <Button
-              type={platform === null ? 'primary' : 'default'}
-              onClick={() => setPlatform(null)}
-            >
-              全部平台
+          <Flex justify="space-between" align="center" wrap gap={12}>
+            <div>
+              <Typography.Title level={2}>全网热搜</Typography.Title>
+              <Typography.Text type="secondary">
+                按平台展示最近一次成功采集的榜单，预留平台暂不采集。
+              </Typography.Text>
+            </div>
+            <Button loading={resource.loading} onClick={resource.refresh}>
+              刷新已存榜单
             </Button>
-            {sources.map((source) => (
-              <Button
-                key={source.id}
-                type={platform === source.id ? 'primary' : 'default'}
-                onClick={() => setPlatform(source.id)}
-              >
-                {source.name.replace('热搜 · ', '')}
-              </Button>
-            ))}
           </Flex>
+          <Card size="small">
+            <Flex gap={12} wrap align="center">
+              <PlatformPicker platforms={sources} value={selected} onChange={setSelected} />
+              <Segmented
+                aria-label="平台地区筛选"
+                value={region}
+                options={['全部', '国内', '国外']}
+                onChange={setRegion}
+              />
+              <Input.Search
+                aria-label="搜索热搜词"
+                placeholder="搜索平台或热搜词"
+                allowClear
+                onSearch={setQuery}
+                style={{ width: 260, maxWidth: '100%' }}
+              />
+              <Typography.Text type="secondary">{visible.length} 个平台</Typography.Text>
+            </Flex>
+          </Card>
         </>
       )}
-      {!resource.loading && !sources.length && (
-        <Empty description="尚未配置热搜来源，请先执行数据库迁移导入来源，再由管理员采集" />
-      )}
+      {resource.error && <Alert type="error" title={resource.error} />}
+      {!resource.loading && !displayed.length && <Empty description="没有匹配的平台或已配置榜单" />}
       <Row gutter={[16, 16]}>
-        {(compact ? visible.slice(0, 3) : visible).map((source) => (
+        {displayed.map((source) => (
           <Col key={source.id} xs={24} lg={compact ? 24 : 12} xl={compact ? 24 : 8}>
             <Card
-              title={source.name.replace('热搜 · ', '')}
               size={compact ? 'small' : 'default'}
+              title={source.name}
               extra={
                 <Tag color={source.status === 'success' ? 'green' : 'default'}>
-                  {!source.enabled
-                    ? '未启用'
-                    : source.status === 'success'
-                      ? '已采集'
-                      : source.status === 'failed'
-                        ? '采集失败'
-                        : '待采集'}
+                  {source.connection_status === 'reserved'
+                    ? '预留'
+                    : !source.enabled
+                      ? '未启用'
+                      : source.status === 'success'
+                        ? '已采集'
+                        : source.status === 'failed'
+                          ? '采集失败'
+                          : '待采集'}
                 </Tag>
               }
             >
               <Typography.Paragraph type="secondary">
-                最近成功榜单：{formatTime(source.observed_at)}
+                {source.region} · {source.category} ·{' '}
+                {source.connection_status === 'reserved'
+                  ? '暂未接入 API'
+                  : `最近榜单：${formatTime(source.observed_at)}`}
               </Typography.Paragraph>
               {source.error && (
                 <Alert
                   type="warning"
-                  title="最近请求失败，以下可能是历史榜单"
+                  title="最近采集失败，以下可能是历史榜单"
                   description={source.error}
                 />
               )}
               {!source.items.length && (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={source.enabled ? '暂无榜单，等待管理员或线上定时采集' : '待测试启用'}
+                  description={
+                    source.connection_status === 'reserved'
+                      ? '平台已预留，暂未接入采集接口'
+                      : source.enabled
+                        ? '暂无榜单，等待管理员或线上定时采集'
+                        : '接口已配置，待测试启用'
+                  }
                 />
               )}
               <Space orientation="vertical" className="full-width" size={16}>
                 {source.items
-                  .filter((item) => !q || source.name.includes(q) || item.title.includes(q))
+                  .filter(
+                    (item) =>
+                      !query ||
+                      source.name.includes(query) ||
+                      item.title.toLowerCase().includes(query.toLowerCase()),
+                  )
                   .slice(0, compact ? 5 : 50)
                   .map((item) => (
                     <div key={`${item.id}-${item.rank}`}>
@@ -145,7 +161,7 @@ export function HotListsPage({ tick, compact = false }: { tick: number; compact?
                         </Typography.Text>
                       )}
                       {!compact && (
-                        <Space style={{ marginTop: 8 }} wrap>
+                        <Space wrap style={{ marginTop: 8 }}>
                           <PersonalButton kind="topic" targetId={item.id} />
                           <AddToBoard topicId={item.id} />
                         </Space>

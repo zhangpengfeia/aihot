@@ -90,7 +90,8 @@ test('offline changes survive reload and retry, including all-hidden layout',asy
   let sent;
   globalThis.fetch = async (_,options) => {sent=JSON.parse(options.body); return response(sent);};
   await store.getState().load('user:3');
-  assert.deepEqual(sent,{cards:[]});
+  assert.deepEqual(sent.cards,[]);
+  assert.equal(sent.widths.new_entries,'half');
   assert.equal(store.getState().layouts['user:3'].dirty,false);
 });
 
@@ -110,4 +111,35 @@ test('account switch prevents queued old-account writes',async () => {
   assert.equal(writes,1);
   assert.equal(store.getState().layouts['user:4'].dirty,true);
   assert.notDeepEqual(store.getState().layouts['user:5'].cards,['knowledge']);
+});
+
+
+test('widths survive reorder, hide/add, hydration, and sync independently per user',async () => {
+  cache.clear();
+  const payloads = [];
+  globalThis.fetch = async (_,options) => {payloads.push(JSON.parse(options.body)); return response({});};
+  let store = (await freshStore()).useDashboardStore;
+  store.getState().activate('user:20');
+  store.getState().setWidth('user:20','knowledge','half');
+  await store.getState().sync('user:20');
+  store.getState().setCards('user:20',['hotlists']);
+  await store.getState().sync('user:20');
+  store.getState().setCards('user:20',['hotlists','knowledge']);
+  await store.getState().sync('user:20');
+  assert.equal(payloads.at(-1).widths.knowledge,'half');
+  store = (await freshStore()).useDashboardStore;
+  store.getState().activate('user:20');
+  assert.equal(store.getState().layouts['user:20'].widths.knowledge,'half');
+  assert.deepEqual(store.getState().layouts['user:20'].cards,['hotlists','knowledge']);
+  store.getState().activate('user:21');
+  assert.equal(store.getState().layouts['user:21'].widths.knowledge,'full');
+});
+
+test('legacy local cache receives default widths and rejects invalid widths',async () => {
+  cache.clear();
+  cache.set('aihot-dashboard-layouts',JSON.stringify({state:{layouts:{guest:{cards:['projects'],revision:2,dirty:false},'user:30':{cards:['growth'],widths:{growth:'quarter',knowledge:'half'},revision:3,dirty:false}}},version:0}));
+  const store = (await freshStore()).useDashboardStore;
+  assert.equal(store.getState().layouts.guest.widths.new_entries,'half');
+  assert.equal(store.getState().layouts['user:30'].widths.growth,'full');
+  assert.equal(store.getState().layouts['user:30'].widths.knowledge,'half');
 });

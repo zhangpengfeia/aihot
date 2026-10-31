@@ -115,7 +115,7 @@ def classify(repo: dict, readme: str) -> str | None:
     """返回可追溯的识别依据。是规则识别而非人工认证，允许用户检查误判。"""
     if repo.get("archived") or repo.get("fork") or repo.get("private"):
         return None
-    from app.services.skills.analysis import RuleAnalyzer
+    from app.services.skills.analysis import MEDIA_TAGS, RuleAnalyzer
 
     text = f"{repo['full_name']} {repo.get('description') or ''} {' '.join(repo.get('topics', []))} {readme}"
     ai = re.search(
@@ -124,6 +124,7 @@ def classify(repo: dict, readme: str) -> str | None:
         re.I,
     )
     analysis = RuleAnalyzer().analyze(repo, readme)
-    if ai and analysis.tags:
+    video_skill = re.search(r"\bSKILL\.md\b|\bskills?\b", text, re.I)
+    if (ai or video_skill) and MEDIA_TAGS.intersection(analysis.tags):
         return "；".join(analysis.evidence)[:500]
     return None

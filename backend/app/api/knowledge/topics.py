@@ -265,7 +265,9 @@ def export(topic_id: int, session: Session = Depends(get_session)):
 
 
 @router.get("/hotlists")
-def hotlists(session: Session = Depends(get_session)):
+def hotlists(
+    region: Literal["国内", "国外"] | None = None, session: Session = Depends(get_session)
+):
     from app.api.knowledge.sources import source_data
     from app.models import HotListSnapshot
     from app.utils.time import iso
@@ -286,4 +288,79 @@ def hotlists(session: Session = Depends(get_session)):
                 "items": snapshot.entries if snapshot else [],
             }
         )
-    return {"items": result}
+    from app.core.hot_platforms import HOT_PLATFORM_CATALOG, platform_for_source
+
+    configured = list(
+        session.scalars(
+            select(ManagedKnowledgeSource)
+            .where(
+                ManagedKnowledgeSource.adapter == "hotlist",
+                ManagedKnowledgeSource.deleted_at.is_(None),
+            )
+            .order_by(ManagedKnowledgeSource.id)
+        )
+    )
+    by_id = {source.id: source for source in configured}
+    grouped = {}
+    custom = []
+    for item in result:
+        key = platform_for_source(by_id[item["id"]])
+        if key:
+            grouped.setdefault(key, []).append(item)
+        else:
+            custom.append(item)
+    platforms = []
+    for platform in HOT_PLATFORM_CATALOG:
+        if region and platform["region"] != region:
+            continue
+        candidates = grouped.get(platform["id"], [])
+        # 优先显示有榜单的可用来源，同一平台不因备用接口重复出现。
+        selected = (
+            max(
+                candidates,
+                key=lambda source: (
+                    bool(source["items"]),
+                    source["enabled"],
+                    source["observed_at"] or "",
+                ),
+            )
+            if candidates
+            else None
+        )
+        platforms.append(
+            {
+                **{key: value for key, value in platform.items() if key != "aliases"},
+                "connection_status": "configured" if selected else "reserved",
+                "source_id": selected["id"] if selected else None,
+                "source_name": selected["name"] if selected else None,
+                "source_count": len(candidates),
+                "enabled": selected["enabled"] if selected else False,
+                "status": selected["status"] if selected else "reserved",
+                "error": selected["error"] if selected else None,
+                "observed_at": selected["observed_at"] if selected else None,
+                "items": selected["items"] if selected else [],
+            }
+        )
+    # 管理员自建且未关联目录的平台也继续可见，不因预置目录覆盖而丢失。
+    for item in custom:
+        source = by_id[item["id"]]
+        if region and source.region != region:
+            continue
+        platforms.append(
+            {
+                **item,
+                "id": f"custom:{source.id}",
+                "region": source.region,
+                "category": source.category,
+                "source_id": source.id,
+                "source_name": source.name,
+                "source_count": 1,
+                "connection_status": "configured",
+            }
+        )
+    return {
+        "items": [item for item in result if not region or by_id[item["id"]].region == region],
+        "platforms": platforms,
+        "platform_count": len(platforms),
+        "reserved_count": sum(p["connection_status"] == "reserved" for p in platforms),
+    }

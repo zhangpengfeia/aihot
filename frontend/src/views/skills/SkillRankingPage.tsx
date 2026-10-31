@@ -44,7 +44,7 @@ export function SkillRankingPage({
   const latestRun = runs[0];
   const stale =
     board.run &&
-    Date.now() - new Date(board.run.finished_at ?? board.run.slot).getTime() > 8 * 24 * 60 * 60_000;
+    Date.now() - new Date(board.run.finished_at ?? board.run.slot).getTime() > 26 * 60 * 60_000;
   const empty = (
     <Empty
       image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -62,7 +62,7 @@ export function SkillRankingPage({
               ? '按日期查找，回看当时的榜单与原始资料。'
               : kind === 'growth' && board.run
                 ? '需要至少 7 天观测，当前可先查看累计 Star 榜。'
-                : '配置数据库和 GitHub Token 后，启动采集进程。'}
+                : '新范围尚无成功榜单，请由管理员采集 AI 影音制作项目。'}
           </Text>
         </Space>
       }
@@ -73,17 +73,17 @@ export function SkillRankingPage({
       <Flex className="page-heading" justify="space-between" align="center" gap={16} wrap>
         <div>
           <Space>
-            <Title level={2}>{history ? '历史热榜' : 'AI 项目周榜'}</Title>
+            <Title level={2}>{history ? '历史热榜' : 'AI 影音制作热门项目'}</Title>
             <Tag color="blue">
-              {board.run && board.run.scope !== 'ai-production-weekly-v1'
+              {board.run && board.run.scope !== 'ai-video-weekly-v2'
                 ? '旧版历史榜单'
-                : 'TOP 100 · 周榜'}
+                : 'TOP 100 · 每日更新'}
             </Tag>
           </Space>
           <Paragraph type="secondary">
             {history
               ? '按日期与批次查看历史榜单与原始资料。'
-              : '发现值得关注的 AI 短视频与影音制作、AI 办公项目，整理下一条视频的选题与资料。'}
+              : '发现值得关注的 AI 短视频与影音制作工具及 Skill，结合知识库选题制作动画、短视频、配音与字幕。'}
           </Paragraph>
         </div>
         <Flex align="center" justify="flex-end" gap={12} wrap>
@@ -114,7 +114,7 @@ export function SkillRankingPage({
           <Alert type="info" showIcon title="新一轮采集中，完成后将自动更新榜单" />
         )}
         {!history && stale && (
-          <Alert type="warning" showIcon title="榜单已超过 8 天未更新，请检查采集状态" />
+          <Alert type="warning" showIcon title="榜单已超过 26 小时未更新，请检查采集状态" />
         )}
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
@@ -126,7 +126,7 @@ export function SkillRankingPage({
                 prefix={<BookOutlined className="stat-icon" />}
               />
               <Text type="secondary" className="stat-caption">
-                符合影音制作与办公场景识别规则的项目
+                符合 AI 影音制作或视频 Skill 场景识别规则的项目
               </Text>
             </Card>
           </Col>

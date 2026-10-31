@@ -20,12 +20,38 @@ export const DEFAULT_CARDS: CardId[] = [
   'knowledge',
   'hotlists',
 ];
+export type CardWidth = 'full' | 'half';
+export const DEFAULT_WIDTHS: Record<CardId, CardWidth> = {
+  overview: 'full',
+  new_entries: 'half',
+  risers: 'half',
+  growth: 'full',
+  knowledge: 'full',
+  hotlists: 'full',
+  favorites: 'full',
+};
+export function normalizeWidths(value: unknown): Record<CardId, CardWidth> {
+  const widths = { ...DEFAULT_WIDTHS };
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    for (const id of Object.keys(CARD_LABELS) as CardId[]) {
+      const width = (value as Record<string, unknown>)[id];
+      if (width === 'full' || width === 'half') widths[id] = width;
+    }
+  }
+  return widths;
+}
 interface Layout {
   cards: CardId[];
+  widths: Record<CardId, CardWidth>;
   revision: number;
   dirty: boolean;
 }
-export const DEFAULT_LAYOUT: Layout = { cards: DEFAULT_CARDS, revision: 0, dirty: false };
+export const DEFAULT_LAYOUT: Layout = {
+  cards: DEFAULT_CARDS,
+  widths: DEFAULT_WIDTHS,
+  revision: 0,
+  dirty: false,
+};
 export const dashboardScope = (userId?: number) =>
   userId === undefined ? 'guest' : `user:${userId}`;
 export function normalizeCards(value: unknown): CardId[] {
@@ -47,6 +73,7 @@ interface DashboardState {
   errors: Record<string, string>;
   activate: (scope: string) => void;
   setCards: (scope: string, cards: CardId[]) => void;
+  setWidth: (scope: string, card: CardId, width: CardWidth) => void;
   load: (scope: string) => Promise<void>;
   sync: (scope: string) => Promise<void>;
 }
@@ -81,12 +108,31 @@ export const useDashboardStore = create<DashboardState>()(
             ...current.layouts,
             [scope]: {
               cards: normalizeCards(cards).filter((id) => scope !== 'guest' || id !== 'favorites'),
+              widths: current.layouts[scope]?.widths ?? { ...DEFAULT_WIDTHS },
               revision: (current.layouts[scope]?.revision ?? 0) + 1,
               dirty: scope !== 'guest',
             },
           },
           errors: { ...current.errors, [scope]: '' },
         }));
+        if (scope !== 'guest') void state().sync(scope);
+      },
+      setWidth: (scope, card, width) => {
+        set((current) => {
+          const layout = current.layouts[scope] ?? DEFAULT_LAYOUT;
+          return {
+            layouts: {
+              ...current.layouts,
+              [scope]: {
+                ...layout,
+                widths: { ...layout.widths, [card]: width },
+                revision: layout.revision + 1,
+                dirty: scope !== 'guest',
+              },
+            },
+            errors: { ...current.errors, [scope]: '' },
+          };
+        });
         if (scope !== 'guest') void state().sync(scope);
       },
       load: async (scope) => {
@@ -97,7 +143,9 @@ export const useDashboardStore = create<DashboardState>()(
         }
         const revision = state().layouts[scope]?.revision ?? 0;
         try {
-          const result = await get<{ cards: string[] }>('/workspace/dashboard-preferences');
+          const result = await get<{ cards: string[]; widths?: Record<string, unknown> }>(
+            '/workspace/dashboard-preferences',
+          );
           set((current) => {
             const layout = current.layouts[scope];
             // 慢速读取不得覆盖用户刚刚拖动后的本地配置。
@@ -106,7 +154,12 @@ export const useDashboardStore = create<DashboardState>()(
             return {
               layouts: {
                 ...current.layouts,
-                [scope]: { cards: normalizeCards(result.cards), revision, dirty: false },
+                [scope]: {
+                  cards: normalizeCards(result.cards),
+                  widths: normalizeWidths(result.widths),
+                  revision,
+                  dirty: false,
+                },
               },
               errors: { ...current.errors, [scope]: '' },
             };
@@ -126,7 +179,10 @@ export const useDashboardStore = create<DashboardState>()(
             // 每个账号只允许一个写入请求；拖动期间产生的更新合并到下一轮。
             while (state().activeScope === scope && state().layouts[scope]?.dirty) {
               const layout = state().layouts[scope];
-              await write('/workspace/dashboard-preferences', 'PUT', { cards: layout.cards });
+              await write('/workspace/dashboard-preferences', 'PUT', {
+                cards: layout.cards,
+                widths: layout.widths,
+              });
               set((current) =>
                 current.layouts[scope]?.revision !== layout.revision
                   ? current
@@ -167,6 +223,7 @@ export const useDashboardStore = create<DashboardState>()(
             cards: normalizeCards(layout.cards).filter(
               (id) => scope !== 'guest' || id !== 'favorites',
             ),
+            widths: normalizeWidths(layout.widths),
             revision: Number.isSafeInteger(layout.revision) ? layout.revision : 0,
             dirty: scope !== 'guest' && layout.dirty === true,
           };

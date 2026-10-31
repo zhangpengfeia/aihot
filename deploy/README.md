@@ -53,7 +53,7 @@ MYSQL_PORT=3306
 
 ## 定时采集与日常操作
 
-GitHub worker 每周一 **北京时间 00:00** 开始，启动时等待下一个执行点；知识来源每半小时采集。worker 由 Docker restart 策略常驻，服务器重启后 Docker 服务也需要启用。无需 crontab、本地 SSH 隧道或本地 make start。MySQL 的 GET_LOCK 继续防止多进程重复采集。
+GitHub worker 每天 **北京时间 00:00** 开始，启动时等待下一个执行点；知识来源每半小时采集。worker 由 Docker restart 策略常驻，服务器重启后 Docker 服务也需要启用。无需 crontab、本地 SSH 隧道或本地 make start。MySQL 的 GET_LOCK 继续防止多进程重复采集。
 
 ```bash
 ROOT=/opt/aihot

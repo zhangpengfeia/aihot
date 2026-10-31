@@ -1,19 +1,23 @@
 import type { ReactNode } from 'react';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Segmented, Space, Tooltip } from 'antd';
 import { CloseOutlined, HolderOutlined } from '@ant-design/icons';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CARD_LABELS, type CardId } from '../../store/dashboardStore';
+import { CARD_LABELS, type CardId, type CardWidth } from '../../store/dashboardStore';
 export function SortableDashboardCard({
   id,
   children,
   editing,
   onRemove,
+  width,
+  onWidthChange,
 }: {
   id: CardId;
   children: ReactNode;
   editing: boolean;
   onRemove: () => void;
+  width: CardWidth;
+  onWidthChange: (value: CardWidth) => void;
 }) {
   const {
     attributes,
@@ -23,11 +27,16 @@ export function SortableDashboardCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, disabled: !editing });
+  } = useSortable({
+    id,
+    disabled: !editing,
+    strategy: () => null,
+    animateLayoutChanges: () => false,
+  });
   return (
     <section
       ref={setNodeRef}
-      className={`dashboard-sortable-card ${editing ? 'dashboard-editing' : ''} ${id === 'new_entries' || id === 'risers' ? 'dashboard-half-card' : ''}`}
+      className={`dashboard-sortable-card ${editing ? 'dashboard-editing' : ''} ${width === 'half' ? 'dashboard-half-card' : ''}`}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -38,7 +47,17 @@ export function SortableDashboardCard({
     >
       {editing && (
         <div className="dashboard-sort-toolbar">
-          <Space size={0}>
+          <Space size={4}>
+            <Segmented
+              size="small"
+              aria-label={`${CARD_LABELS[id]}占行样式`}
+              value={width}
+              onChange={(value) => onWidthChange(value as CardWidth)}
+              options={[
+                { label: '整行', value: 'full' },
+                { label: '半行', value: 'half' },
+              ]}
+            />
             <Tooltip title="拖拽排序（支持键盘空格和方向键）">
               <Button
                 ref={setActivatorNodeRef}

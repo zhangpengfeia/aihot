@@ -48,7 +48,10 @@ def rankings(
         session.get(Run, run_id)
         if run_id
         else session.scalar(
-            select(Run).where(Run.status == "success").order_by(Run.slot.desc()).limit(1)
+            select(Run)
+            .where(Run.status == "success", Run.scope == "ai-video-weekly-v2")
+            .order_by(Run.slot.desc())
+            .limit(1)
         )
     )
     if run is None:

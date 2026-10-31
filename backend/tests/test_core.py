@@ -43,7 +43,7 @@ def repo(stars=100):
 
 
 def add_run(db, at, stars=100, name=None):
-    run = Run(slot=time_slot(at), started_at=at)
+    run = Run(slot=time_slot(at), started_at=at, scope="ai-video-weekly-v2")
     db.add(run)
     db.flush()
     data = repo(stars)
@@ -58,7 +58,8 @@ def test_classifier_excludes_unrelated_and_forks():
     assert classify({"full_name": "school/math-skills"}, "Learning mathematics") is None
     assert classify(repo(), "Use SKILL.md") is None
     assert classify(repo(), "AI text-to-video generation")
-    assert classify(repo(), "AI spreadsheet assistant")
+    assert classify(repo(), "AI spreadsheet assistant") is None
+    assert classify(repo(), "SKILL.md for Remotion animation and video editing")
     assert classify({**repo(), "fork": True}, "SKILL.md") is None
     assert classify({**repo(), "archived": True}, "SKILL.md") is None
 
@@ -144,3 +145,18 @@ def test_github_limit_and_not_found():
 def test_half_hour_slot():
     assert time_slot(datetime(2026, 10, 30, 10, 59, 12)).minute == 30
     assert time_slot(datetime(2026, 10, 30, 10, 2)).minute == 0
+
+
+def test_default_weekly_board_does_not_fall_back_to_office_scope(db):
+    legacy = add_run(db, datetime(2026, 10, 1))
+    legacy.scope = "ai-production-weekly-v1"
+    db.commit()
+    app.dependency_overrides[get_session] = lambda: db
+    try:
+        client = TestClient(app)
+        assert client.get("/api/rankings").json() == {"run": None, "items": []}
+        assert client.get(f"/api/rankings?run_id={legacy.id}").json()["run"]["id"] == legacy.id
+        current = add_run(db, datetime(2026, 10, 8))
+        assert client.get("/api/rankings").json()["run"]["id"] == current.id
+    finally:
+        app.dependency_overrides.clear()

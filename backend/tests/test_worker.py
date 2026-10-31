@@ -1,4 +1,4 @@
-"""GitHub 每周调度按北京时间计算，手动采集无需等待。"""
+"""GitHub 每日调度按北京时间计算，手动采集无需等待。"""
 
 from datetime import datetime
 from types import SimpleNamespace
@@ -13,8 +13,8 @@ from app.runtime import github_worker as worker
     [
         ("2026-11-01T15:59:59", "2026-11-01T16:00:00"),
         ("2026-11-01T16:00:00", "2026-11-01T16:00:00"),
-        ("2026-11-01T16:00:01", "2026-11-08T16:00:00"),
-        ("2026-12-31T19:00:00", "2027-01-03T16:00:00"),
+        ("2026-11-01T16:00:01", "2026-11-02T16:00:00"),
+        ("2026-12-31T19:00:00", "2027-01-01T16:00:00"),
     ],
 )
 def test_next_collection_beijing_midnight(now, expected):
@@ -40,7 +40,7 @@ def test_worker_waits_before_first_collection(monkeypatch):
     monkeypatch.setattr(worker, "collect", collect)
     with pytest.raises(KeyboardInterrupt):
         worker.main()
-    assert calls == [("wait", datetime(2026, 11, 1, 16)), ("collect", None)]
+    assert calls == [("wait", datetime(2026, 10, 30, 16)), ("collect", None)]
 
 
 def test_once_collects_immediately(monkeypatch):
@@ -56,7 +56,7 @@ def test_once_collects_immediately(monkeypatch):
 
 
 @pytest.mark.parametrize("fail_first", [False, True])
-def test_next_run_is_next_week_even_after_failure(monkeypatch, fail_first):
+def test_next_run_is_next_day_even_after_failure(monkeypatch, fail_first):
     from datetime import timedelta
 
     now = [datetime(2026, 10, 30, 10)]
@@ -82,4 +82,12 @@ def test_next_run_is_next_week_even_after_failure(monkeypatch, fail_first):
     monkeypatch.setattr(worker, "collect", collect)
     with pytest.raises(KeyboardInterrupt):
         worker.main()
-    assert scheduled == [datetime(2026, 11, 1, 16), datetime(2026, 11, 8, 16)]
+    assert scheduled == [datetime(2026, 10, 30, 16), datetime(2026, 10, 31, 16)]
+
+
+def test_daily_collection_bucket_uses_beijing_midnight():
+    from app.utils.time import day_slot
+
+    assert day_slot(datetime(2026, 10, 31, 15, 59, 59)) == datetime(2026, 10, 30, 16)
+    assert day_slot(datetime(2026, 10, 31, 16)) == datetime(2026, 10, 31, 16)
+    assert day_slot(datetime(2026, 10, 31, 23, 59)) == datetime(2026, 10, 31, 16)

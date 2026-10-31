@@ -142,12 +142,21 @@ def collect_source(source, fetch):
         for index, item in enumerate(entries[: source.item_limit]):
             if not isinstance(item, dict):
                 continue
-            score = item.get("hot", item.get("score"))
+            score = (
+                value_at(item, source.options["score_field"], None)
+                if source.options.get("score_field")
+                else item.get("hot", item.get("score"))
+            )
             score_label = str(score)[:100] if score is not None else None
             if isinstance(score, str) and score.isdigit():
                 score = int(score)
             title = value_at(item, source.options.get("title_field", "title"))
-            link = item.get("url") or item.get("link") or item.get("mobileUrl") or ""
+            link = (
+                value_at(item, source.options.get("url_field", "url"))
+                or item.get("link")
+                or item.get("mobileUrl")
+                or ""
+            )
             if source.options.get("url_prefix"):
                 link = source.options["url_prefix"] + quote(
                     str(value_at(item, source.options.get("url_field", "title"))), safe=""
@@ -161,7 +170,7 @@ def collect_source(source, fetch):
                 score,
             )
             if row:
-                rank = item.get("rank")
+                rank = item.get("rank", item.get("index"))
                 row["hot_rank"] = rank if type(rank) is int and 0 < rank <= 10000 else index + 1
                 row["score_label"] = score_label
                 rows.append(row)

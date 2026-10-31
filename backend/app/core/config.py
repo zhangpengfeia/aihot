@@ -36,13 +36,12 @@ class Settings(BaseSettings):
         "topic:music-generation",
         "AI video editing in:name,description",
         "AI animation in:name,description",
-        "AI office in:name,description",
-        "AI spreadsheet in:name,description",
-        "AI presentation in:name,description",
-        "AI document in:name,description",
-        "AI meeting in:name,description",
-        "AI knowledge base in:name,description",
-        "AI workflow automation in:name,description",
+        "AI short video in:name,description",
+        "AI subtitle in:name,description",
+        "AI voiceover in:name,description",
+        "AI video skills in:name,description,readme",
+        "remotion skills in:name,description,readme",
+        "manim skills in:name,description,readme",
     ]
     candidate_limit: int = Field(default=500, ge=100, le=2000)
     tracked_limit: int = Field(default=200, ge=20, le=1000)

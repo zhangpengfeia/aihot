@@ -22,7 +22,7 @@ from app.core.database import Base
 class Run(Base):
     __tablename__ = "collection_runs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    # slot 保留批次观测时间；scope 区分旧 Skills 批次与新 AI 项目周榜。
+    # slot 保留批次观测时间；scope 区分旧 Skills 批次与新 AI 影音项目榜。
     slot: Mapped[datetime] = mapped_column(DateTime, unique=True)
     scope: Mapped[str | None] = mapped_column(String(40))
     status: Mapped[str] = mapped_column(String(20), default="running")

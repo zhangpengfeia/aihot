@@ -112,7 +112,7 @@ export function CollectionStatusPage({ tick }: { tick: number }) {
           showIcon
           type="warning"
           title={`是否立即触发${confirmKind === 'github' ? ' GitHub ' : '知识库'}采集接口？`}
-          description="确认后将启动后台采集并请求外部接口。GitHub 当周已完成的批次会自动跳过，知识库按半小时窗口去重。"
+          description="确认后将启动后台采集并请求外部接口。GitHub 当天已完成的批次会自动跳过，知识库按半小时窗口去重。"
         />
       </Modal>
       <Modal
@@ -202,7 +202,7 @@ export function CollectionStatusPage({ tick }: { tick: number }) {
         <Alert
           type="info"
           showIcon
-          title="GitHub 每周一北京时间 00:00 更新 AI 项目前 100 周榜；知识来源每半小时采集。"
+          title="GitHub 每天北京时间 00:00 更新 AI 影音制作前 100 项目；知识来源每半小时采集。"
           description="下次执行为计划时间，需要 worker 持续运行；运行中状态来自数据库记录，不能据此确认进程在线。"
         />
         <Row gutter={[16, 16]}>

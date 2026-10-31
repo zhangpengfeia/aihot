@@ -43,7 +43,7 @@ def test_top100_week_growth_and_snapshot_analysis():
     with Session(engine) as db:
         for week, stars in [(0, 100), (1, 90)]:
             at = start + timedelta(days=7 * week)
-            run = Run(slot=at, started_at=at, scope="ai-production-weekly-v1")
+            run = Run(slot=at, started_at=at, scope="ai-video-weekly-v2")
             db.add(run)
             db.flush()
             records = [
@@ -87,3 +87,30 @@ def test_top100_week_growth_and_snapshot_analysis():
 def test_week_bucket_uses_beijing_monday():
     assert week_slot(datetime(2026, 11, 1, 15, 59)) == datetime(2026, 10, 25, 16)
     assert week_slot(datetime(2026, 11, 1, 16)) == datetime(2026, 11, 1, 16)
+
+
+def test_default_search_is_video_only():
+    from app.core.config import Settings
+    from app.infrastructure.github import classify
+
+    queries = Settings(_env_file=None).search_queries
+    assert not any(
+        word in query
+        for query in queries
+        for word in ("office", "spreadsheet", "presentation", "meeting", "document")
+    )
+    assert any("skills" in query for query in queries)
+    for description in [
+        "AI spreadsheet assistant",
+        "AI office automation",
+        "LLM knowledge base RAG",
+        "AI presentation generator",
+    ]:
+        assert classify({"full_name": "example/office", "description": description}, "") is None
+    for description in [
+        "AI text-to-video",
+        "AI voiceover text-to-speech",
+        "AI subtitle transcription",
+        "SKILL.md for Remotion animation",
+    ]:
+        assert classify({"full_name": "example/video", "description": description}, "")

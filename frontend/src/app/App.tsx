@@ -80,7 +80,9 @@ export default function App() {
   }
   return (
     <AppLayout view={view} onNavigate={setView}>
-      {['favorites', 'creation'].includes(view) && !user ? (
+      {['sources', 'categories', 'users'].includes(view) && user?.role !== 'admin' ? (
+        <Alert type="warning" showIcon title="此页面仅限管理员访问" />
+      ) : ['favorites', 'creation'].includes(view) && !user ? (
         <Alert type="info" title="请点击左下角头像登录后访问自己的创作者中心" />
       ) : (
         content

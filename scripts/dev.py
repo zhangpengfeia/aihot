@@ -29,7 +29,9 @@ def preflight() -> None:
                 probe.bind(("127.0.0.1", port))
             except OSError as exc:
                 raise RuntimeError(
-                    f"端口 {port} 不可用，请先停止原来的服务：{exc}"
+                    f"端口 {port} 不可用：{exc}。"
+                    "若已有本项目 make start 正在运行，请回到该终端按 Ctrl+C。"
+                    f"可运行 lsof -nP -iTCP:{port} -sTCP:LISTEN 查看占用者，确认后再停止对应服务。"
                 ) from exc
 
     # 使用与 API 相同的配置，只探测 TCP，不读取或输出数据库密码。

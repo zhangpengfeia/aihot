@@ -13,7 +13,7 @@ from app.models import Ranking, Repository, Run, Snapshot
 from app.services.skills.analysis import analyze_project
 from app.services.skills.metadata import extract_metadata
 from app.services.storage import incoming_size, storage_guard
-from app.utils.time import utcnow, week_slot
+from app.utils.time import day_slot, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ def persist(session: Session, run_id: int, candidates: int, records: list[tuple]
 
 
 def collect(settings: Settings, engine=None, client=None, progress=None, analyzer=None) -> bool:
-    """MySQL 连接级互斥锁跨进程防重；相同周的成功批次不会重复写入。"""
+    """MySQL 连接级互斥锁跨进程防重；相同北京时间自然日的成功批次不会重复写入。"""
     from app.core.database import get_engine
 
     progress = progress or (lambda percent, message: None)
@@ -129,23 +129,23 @@ def collect(settings: Settings, engine=None, client=None, progress=None, analyze
         try:
             factory = sessionmaker(engine, expire_on_commit=False)
             now = utcnow()
-            slot = week_slot(now)
+            slot = day_slot(now)
             with factory.begin() as session:
                 run = session.scalar(
                     select(Run).where(
-                        Run.scope == "ai-production-weekly-v1",
+                        Run.scope == "ai-video-weekly-v2",
                         Run.slot >= slot,
-                        Run.slot < slot + timedelta(days=7),
+                        Run.slot < slot + timedelta(days=1),
                     )
                 )
                 if run and run.status == "success":
-                    logger.info("跳过 GitHub 采集：当前周已有成功批次，批次=%s", run.id)
+                    logger.info("跳过 GitHub 采集：当前日已有成功批次，批次=%s", run.id)
                     return False
                 if not run:
                     run_slot = now.replace(microsecond=0)
                     while session.scalar(select(Run.id).where(Run.slot == run_slot)) is not None:
                         run_slot += timedelta(seconds=1)
-                    run = Run(slot=run_slot, scope="ai-production-weekly-v1", started_at=now)
+                    run = Run(slot=run_slot, scope="ai-video-weekly-v2", started_at=now)
                     session.add(run)
                     session.flush()
                 run.status, run.started_at, run.error = "running", utcnow(), None

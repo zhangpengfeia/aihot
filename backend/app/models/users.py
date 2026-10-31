@@ -28,7 +28,7 @@ class LoginSession(Base):
 class DashboardPreference(Base):
     __tablename__ = "dashboard_preferences"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    cards: Mapped[list] = mapped_column(JSON)
+    cards: Mapped[list | dict] = mapped_column(JSON)
 
 
 class CollectionTask(Base):
