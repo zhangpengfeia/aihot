@@ -34,6 +34,7 @@ check:
 	cd backend && .venv/bin/python -m pytest
 	cd frontend && npm run format:check
 	cd frontend && npm run test:store
+	cd frontend && npm run test:workspace
 
 build:
 	cd frontend && npm run build

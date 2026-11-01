@@ -1,5 +1,5 @@
 import { AppstoreOutlined, CheckOutlined } from '@ant-design/icons';
-import { Button, Empty, Flex, Input, Modal, Select, Typography } from 'antd';
+import { Button, Checkbox, Empty, Flex, Input, Modal, Select, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import './grouped-filter-picker.css';
 export interface FilterOption {
@@ -22,6 +22,7 @@ export function GroupedFilterPicker({
   allLabel,
   searchPlaceholder,
   noun = '项',
+  allowSelectAll = false,
 }: {
   groups: FilterGroup[];
   value: string[];
@@ -32,6 +33,7 @@ export function GroupedFilterPicker({
   allLabel: string;
   searchPlaceholder: string;
   noun?: string;
+  allowSelectAll?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
@@ -56,6 +58,8 @@ export function GroupedFilterPicker({
   const filtered = options.filter((option) =>
     `${option.label} ${option.searchText ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()),
   );
+  const selected = new Set(draft);
+  const selectedCount = filtered.filter((option) => selected.has(option.value)).length;
   return (
     <>
       <Button
@@ -149,6 +153,31 @@ export function GroupedFilterPicker({
               {filtered.length} 个{query ? '搜索结果' : noun}
             </Typography.Text>
           </Flex>
+          {allowSelectAll && (
+            <Checkbox
+              checked={filtered.length > 0 && selectedCount === filtered.length}
+              indeterminate={selectedCount > 0 && selectedCount < filtered.length}
+              disabled={!filtered.length}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                const visible = new Set(filtered.map((option) => option.value));
+                setDraft((previous) =>
+                  checked
+                    ? [...new Set([...previous, ...visible])]
+                    : previous.filter((id) => !visible.has(id)),
+                );
+              }}
+            >
+              {query.trim()
+                ? '全选搜索结果'
+                : group === 'all'
+                  ? '全选全部标签'
+                  : group === 'selected'
+                    ? '全选当前列表'
+                    : '全选当前分组'}
+              （{selectedCount}/{filtered.length}）
+            </Checkbox>
+          )}
           <div
             ref={listRef}
             className="grouped-filter-picker-options"

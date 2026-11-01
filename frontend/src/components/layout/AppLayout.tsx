@@ -7,7 +7,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons';
-import { Button, Grid, Layout, Menu, Space, Tooltip, Typography } from 'antd';
+import { Button, Grid, Layout, Menu, Space, Tabs, Tooltip, Typography } from 'antd';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { navigationItems, viewLabels, type ViewKey } from '../../app/navigation';
@@ -17,10 +17,14 @@ export function AppLayout({
   view,
   onNavigate,
   children,
+  tabs,
+  onCloseTab,
 }: {
   view: ViewKey;
   onNavigate: (view: ViewKey) => void;
   children: ReactNode;
+  tabs: ViewKey[];
+  onCloseTab: (key: ViewKey) => void;
 }) {
   const { user } = useAuth();
   const screens = Grid.useBreakpoint();
@@ -83,6 +87,22 @@ export function AppLayout({
             {screens.sm ? 'API 文档' : 'API'}
           </Button>
         </Header>
+        <div className="workspace-tabs">
+          <Tabs
+            type="editable-card"
+            hideAdd
+            activeKey={view}
+            onChange={(key) => onNavigate(key as ViewKey)}
+            onEdit={(key, action) => {
+              if (action === 'remove') onCloseTab(key as ViewKey);
+            }}
+            items={tabs.map((key) => ({
+              key,
+              label: viewLabels[key].split(' / ').pop(),
+              closable: key !== 'summary',
+            }))}
+          />
+        </div>
         <Content className="app-content">{children}</Content>
       </Layout>
     </Layout>

@@ -90,3 +90,21 @@ body {
   max-width: 1640px;
   margin-inline: auto;
 }
+
+.workspace-tabs {
+  padding: 12px 24px 0;
+  background: #fff;
+  border-bottom: 1px solid #e9edf4;
+  min-width: 0;
+}
+.workspace-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+.workspace-tabs .ant-tabs-content-holder {
+  display: none;
+}
+@media (max-width: 767px) {
+  .workspace-tabs {
+    padding-inline: 12px;
+  }
+}

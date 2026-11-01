@@ -39,8 +39,19 @@ export function SkillRankingPage({
   onRefresh: () => void;
   onSelect: (id: number) => void;
 }) {
-  const { kind, setKind, setDay, runs, runId, setRunId, board, loading, error, runError } =
-    useSkillRankings(history, tick);
+  const {
+    kind,
+    setKind,
+    setDay,
+    runs,
+    runId,
+    setRunId,
+    board,
+    loading,
+    runsLoading,
+    error,
+    runError,
+  } = useSkillRankings(history, tick);
   const latestRun = runs[0];
   const stale =
     board.run &&
@@ -93,8 +104,8 @@ export function SkillRankingPage({
               最近任务：{formatTime(latestRun.slot)} · {statusLabels[latestRun.status]}
             </Text>
           )}
-          <Button icon={<ReloadOutlined />} onClick={onRefresh}>
-            刷新数据
+          <Button icon={<ReloadOutlined />} loading={loading || runsLoading} onClick={onRefresh}>
+            {loading || runsLoading ? '加载中…' : '刷新数据'}
           </Button>
         </Flex>
       </Flex>

@@ -2,7 +2,10 @@ import { useAuth } from './auth';
 import { HotListsPage } from '../views/knowledge/HotListsPage';
 import { Alert } from 'antd';
 import { UserManagementPage } from '../views/users/UserManagementPage';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { ConfigProvider } from 'antd';
+import { PageActivityContext } from './pageActivity';
+import { closeTab, initialTabs, openTab } from './workspaceTabs';
 import { PageHeading } from '../components/common/PageHeading';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useRefreshTick } from '../hooks/useRefreshTick';
@@ -18,12 +21,53 @@ import { DailySummaryPage } from '../views/workspace/DailySummaryPage';
 import { FavoritesPage } from '../views/workspace/FavoritesPage';
 import type { ViewKey } from './navigation';
 
-/** 应用仅管理导航和全局资料抽屉，具体页面自行管理查询与表单。 */
+/** 账号切换后释放所有页面缓存，避免保留上一账号的个人资料。 */
 export default function App() {
   const { user } = useAuth();
-  const [view, setView] = useState<ViewKey>('summary');
+  return <Workspace key={`${user?.id ?? 'guest'}:${user?.role ?? 'guest'}`} />;
+}
+function Workspace() {
+  const [tabs, setTabs] = useState(initialTabs);
   const [selected, setSelected] = useState<number | null>(null);
-  const { tick, refresh } = useRefreshTick();
+  return (
+    <AppLayout
+      view={tabs.active}
+      onNavigate={(key) => setTabs((state) => openTab(state, key))}
+      tabs={tabs.opened}
+      onCloseTab={(key) => setTabs((state) => closeTab(state, key))}
+    >
+      {tabs.opened.map((key) => (
+        <CachedPage key={key} view={key} active={key === tabs.active} onSelect={setSelected} />
+      ))}
+      <SkillDetailDrawer selected={selected} onClose={() => setSelected(null)} />
+    </AppLayout>
+  );
+}
+function CachedPage({
+  view,
+  active,
+  onSelect,
+}: {
+  view: ViewKey;
+  active: boolean;
+  onSelect: (id: number) => void;
+}) {
+  const container = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={container} hidden={!active}>
+      <PageActivityContext.Provider value={active}>
+        <ConfigProvider getPopupContainer={() => container.current ?? document.body}>
+          <PageContent view={view} onSelect={onSelect} />
+        </ConfigProvider>
+      </PageActivityContext.Provider>
+    </div>
+  );
+}
+function PageContent({ view, onSelect }: { view: ViewKey; onSelect: (id: number) => void }) {
+  const { user } = useAuth();
+  const { tick, refresh } = useRefreshTick(
+    view === 'today' ? 15 * 60_000 : view === 'history' ? null : 60_000,
+  );
   let content;
   switch (view) {
     case 'hotlists':
@@ -42,10 +86,10 @@ export default function App() {
       content = <CategoryManagementPage tick={tick} />;
       break;
     case 'favorites':
-      content = <FavoritesPage tick={tick} onSelect={setSelected} />;
+      content = <FavoritesPage tick={tick} onSelect={onSelect} />;
       break;
     case 'summary':
-      content = <DailySummaryPage tick={tick} onSelect={setSelected} />;
+      content = <DailySummaryPage tick={tick} onSelect={onSelect} />;
       break;
     case 'status':
       content = <CollectionStatusPage tick={tick} />;
@@ -61,7 +105,7 @@ export default function App() {
           history={view === 'history'}
           tick={tick}
           onRefresh={refresh}
-          onSelect={setSelected}
+          onSelect={onSelect}
         />
       );
       break;
@@ -74,20 +118,15 @@ export default function App() {
             refresh={refresh}
             loading={false}
           />
-          <SkillLibraryPage tick={tick} onSelect={setSelected} />
+          <SkillLibraryPage tick={tick} onSelect={onSelect} />
         </>
       );
   }
-  return (
-    <AppLayout view={view} onNavigate={setView}>
-      {['sources', 'categories', 'users'].includes(view) && user?.role !== 'admin' ? (
-        <Alert type="warning" showIcon title="此页面仅限管理员访问" />
-      ) : ['favorites', 'creation'].includes(view) && !user ? (
-        <Alert type="info" title="请点击左下角头像登录后访问自己的创作者中心" />
-      ) : (
-        content
-      )}
-      <SkillDetailDrawer selected={selected} onClose={() => setSelected(null)} />
-    </AppLayout>
+  return ['sources', 'categories', 'users'].includes(view) && user?.role !== 'admin' ? (
+    <Alert type="warning" showIcon title="此页面仅限管理员访问" />
+  ) : ['favorites', 'creation'].includes(view) && !user ? (
+    <Alert type="info" title="请点击左下角头像登录后访问自己的创作者中心" />
+  ) : (
+    content
   );
 }

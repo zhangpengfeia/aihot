@@ -107,7 +107,7 @@ export function RankingTable({
       columns={columns}
       dataSource={items}
       rowKey="id"
-      loading={loading}
+      loading={{ spinning: loading, tip: '正在加载项目榜单…', delay: 150 }}
       pagination={false}
       scroll={{ x: 960 }}
       locale={{ emptyText: empty }}

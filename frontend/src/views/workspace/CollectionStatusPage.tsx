@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { usePageActive } from '../../app/pageActivity';
+import { useEffect, useRef, useState } from 'react';
 import { get, write } from '../../api/http';
 import type { User } from '../users/UserManagementPage';
 import {
@@ -43,12 +44,21 @@ export function CollectionStatusPage({ tick }: { tick: number }) {
   } | null>(null);
   const [pollError, setPollError] = useState('');
   const [showProgress, setShowProgress] = useState(false);
+  const pageActive = usePageActive();
+  const pageActiveRef = useRef(pageActive);
+  useEffect(() => {
+    pageActiveRef.current = pageActive;
+  }, [pageActive]);
   const active = !!taskId && (!task || ['pending', 'running'].includes(task.status));
   useEffect(() => {
     if (!taskId) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
+      if (!pageActiveRef.current) {
+        timer = setTimeout(poll, 2000);
+        return;
+      }
       try {
         const result = await get<NonNullable<typeof task>>(
           `/admin/collection-tasks/${taskId}`,

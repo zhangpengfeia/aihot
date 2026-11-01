@@ -11,6 +11,7 @@ export function CategoryPicker({
 }) {
   return (
     <GroupedFilterPicker
+      allowSelectAll
       title="选择内容分类与标签"
       placeholder="选择内容分类 / 热门与小众标签"
       summaryLabel="内容分类"

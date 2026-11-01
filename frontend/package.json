@@ -9,7 +9,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "format": "prettier --write src vite.config.ts index.html",
     "format:check": "prettier --check src vite.config.ts index.html",
-    "test:store": "node --test tests/dashboardStore.test.mjs"
+    "test:store": "node --test tests/dashboardStore.test.mjs",
+    "test:workspace": "node --test tests/workspaceTabs.test.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
