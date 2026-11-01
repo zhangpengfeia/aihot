@@ -76,3 +76,9 @@ API、两类采集、SSH 和 Nginx/Caddy 访问与错误日志仅写标准输出
 该预算针对**本应用容器日志**，不包含服务器其他程序、宿主机 journal/Docker daemon、外部 MySQL 日志或 GitHub 平台上的流水线日志。不要手工修改 Docker 管理的日志文件；配置对新建容器生效，旧容器需重建。镜像与构建缓存、MySQL 数据、证书卷不是日志，需另留磁盘空间。严格服务器级物理配额需要操作系统统一管理，不能通过本应用 Compose 限制其他服务。
 
 参考：[Docker 日志轮转](https://docs.docker.com/engine/logging/drivers/json-file/)、[Caddy 认证](https://caddyserver.com/docs/caddyfile/directives/basic_auth)、[Caddy HTTPS 代理](https://caddyserver.com/docs/quick-starts/reverse-proxy)。
+
+### 旧隧道配置导致新版预检失败
+
+若 Actions 显示 MySQL `127.0.0.1` connection refused，随后旧 tunnel/API 等容器又全部 Healthy，后半段是回滚健康检查，新版未发布。bootstrap 为保护凭据会保留 shared/backend.env，因此删除隧道服务不会自动修改旧 MYSQL_HOST。
+
+在服务器编辑 `/opt/aihot/shared/backend.env`，将 MYSQL_HOST、MYSQL_PORT 改为 Docker 可达的真实 MySQL 地址（本部署应核对 `152.136.228.231:3306`），保留数据库名、用户名和密码。确认 MySQL 监听与防火墙允许来自容器的连接后重跑工作流。不要把容器内 127.0.0.1 当作宿主机地址。新预检 `python -m app.runtime.check_database` 会在连接前识别旧回环配置，并隐藏凭据输出错误码。

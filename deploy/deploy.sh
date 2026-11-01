@@ -35,6 +35,7 @@ compose() {
 rollback() {
   local result=$?
   trap - ERR
+  echo "[deploy] failed at line ${BASH_LINENO[0]} (exit $result); subsequent container health output belongs to rollback." >&2
   echo 'Deployment failed; restoring the previous application version if available.' >&2
   if [[ $previous == "$root/releases/"* && -f $previous/deploy/compose.prod.yaml ]]; then
     export AIHOT_RELEASE_DIR=$previous AIHOT_RELEASE=${previous##*/}
@@ -52,8 +53,8 @@ compose build --pull api web
 compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 trap rollback ERR
 # 预检与迁移容器均 --rm；不会累积 stopped 容器日志。
-compose run --rm --no-deps init python -c \
-  'from app.core.config import get_settings; s=get_settings(); assert s.github_token, "Set GITHUB_TOKEN in shared/backend.env"; assert s.mysql_password and not s.mysql_password.startswith("replace-"), "Configure database password"; from app.core.database import get_engine; from sqlalchemy import text; c=get_engine().connect(); c.execute(text("SELECT 1")); c.close()'
+echo '[deploy] verify direct MySQL configuration and connectivity'
+compose run --rm --no-deps init python -m app.runtime.check_database
 compose stop worker knowledge-worker
 compose run --rm --no-deps init
 compose up -d --remove-orphans --wait --wait-timeout 180 api web worker knowledge-worker caddy
