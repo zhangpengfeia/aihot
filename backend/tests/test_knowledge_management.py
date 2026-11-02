@@ -50,7 +50,9 @@ def managed():
             db, parse_feed(RSS.replace(b"/article", b"/other"), SOURCES[1]), datetime(2026, 10, 30)
         )
         db.commit()
-        app.dependency_overrides[current_user] = lambda: SimpleNamespace(id=999, role="admin", enabled=True)
+        app.dependency_overrides[current_user] = lambda: SimpleNamespace(
+            id=999, role="admin", enabled=True
+        )
         app.dependency_overrides[get_session] = lambda: db
         app.dependency_overrides[get_category_catalog] = lambda: {
             "categories": ["教育", "科技", "技术"],
@@ -276,3 +278,62 @@ def test_seed_respects_disabled_source_defaults():
         db.commit()
         assert db.scalar(select(ManagedKnowledgeSource)).enabled is False
     engine.dispose()
+
+
+def test_bulk_source_enable_disable_preserves_deleted_and_history(managed):
+    client, db, _, _ = managed
+    assert client.delete("/api/knowledge/manage/sources/2").status_code == 200
+    result = client.put("/api/knowledge/manage/sources/enabled", json={"enabled": False})
+    assert result.status_code == 200 and result.json()["changed"] == 1
+    assert not db.get(ManagedKnowledgeSource, 1).enabled
+    assert (
+        client.put("/api/knowledge/manage/sources/enabled", json={"enabled": False}).json()[
+            "changed"
+        ]
+        == 0
+    )
+    result = client.put("/api/knowledge/manage/sources/enabled", json={"enabled": True})
+    assert result.json()["changed"] == 1
+    assert db.get(ManagedKnowledgeSource, 1).enabled
+    deleted = db.get(ManagedKnowledgeSource, 2)
+    assert deleted.deleted_at is not None and not deleted.enabled
+    assert db.scalar(select(func.count()).select_from(KnowledgeTopic)) == 2
+    assert (
+        client.put("/api/knowledge/manage/sources/enabled", json={"enabled": "false"}).status_code
+        == 422
+    )
+    app.dependency_overrides[current_user] = lambda: SimpleNamespace(
+        id=998, role="user", enabled=True
+    )
+    assert (
+        client.put("/api/knowledge/manage/sources/enabled", json={"enabled": False}).status_code
+        == 403
+    )
+
+
+def test_evergreen_labels_and_new_source_category_visible_before_collection(managed):
+    client, db, _, _ = managed
+    created = client.post(
+        "/api/knowledge/manage/sources",
+        json={
+            "name": "Computer principles",
+            "url": "https://example.net/science",
+            "category": "计算机原理",
+            "topic_kind": "知识探索",
+        },
+    )
+    assert created.status_code == 201
+    metadata = client.get("/api/knowledge/meta").json()
+    assert "计算机原理" in metadata["tag_groups"]["知识来源分类"]
+    assert "卫星导航" in metadata["tag_groups"]["技术原理与演变"]
+    assert "生命演化" in metadata["tag_groups"]["起源与演化"]
+    assert "生活常识" in metadata["tag_groups"]["科普与日常常识"]
+    item = db.scalar(select(KnowledgeTopic).where(KnowledgeTopic.source_name == "A"))
+    item.title = "How GPS and QR codes work"
+    item.summary = "Satellite navigation and a QR code explained."
+    db.commit()
+    response = client.get("/api/knowledge/topics", params={"labels": ["卫星导航", "二维码"]})
+    assert response.status_code == 200 and response.json()["total"] == 1
+    tags = response.json()["items"][0]["tags"]
+    assert "卫星导航" in tags and "二维码" in tags
+    assert client.get("/api/knowledge/topics", params={"labels": "生命演化"}).json()["total"] == 0

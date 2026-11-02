@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 
+from app.core.evergreen_sources import EVERGREEN_SOURCES
+
 
 class FeedSource(BaseModel):
     enabled: bool = True
@@ -298,3 +300,8 @@ for platform_id, name, provider_type, category in [
             },
         }
     )
+
+
+# 长青科普目录：仅导入实测可解析的端点；沿用来源管理增量导入与独立启停。
+
+DEFAULT_SOURCES += EVERGREEN_SOURCES

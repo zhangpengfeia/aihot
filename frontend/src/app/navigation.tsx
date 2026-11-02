@@ -7,11 +7,10 @@ export type ViewKey =
   | 'today'
   | 'history'
   | 'knowledge'
-  | 'sources'
+  | 'collection'
   | 'categories'
   | 'favorites'
   | 'summary'
-  | 'status'
   | 'creation';
 export const navigationItems: MenuProps['items'] = [
   { key: 'summary', icon: <FireOutlined />, label: '首页看板' },
@@ -51,10 +50,9 @@ export const viewLabels: Record<ViewKey, string> = {
   today: 'AI 项目库 / 热门项目',
   history: 'AI 项目库 / 历史热榜',
   knowledge: '知识选 / 知识选题库',
-  sources: '管理员 / 采集接口管理',
+  collection: '管理员 / 采集管理',
   categories: '分类整理',
   favorites: '收藏与个人备注',
   summary: '首页看板',
-  status: '采集状态面板',
   creation: '创作者中心 / 选题创作看板',
 };

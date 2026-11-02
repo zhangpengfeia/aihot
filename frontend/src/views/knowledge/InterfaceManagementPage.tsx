@@ -29,6 +29,7 @@ export function InterfaceManagementPage({ tick }: { tick: number }) {
   const categories = useManagement<CategoryResponse>('/knowledge/manage/categories', tick);
   const [editing, setEditing] = useState<ManagedSource | null>(null);
   const [open, setOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState<boolean | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [previewSource, setPreviewSource] = useState<ManagedSource | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -43,6 +44,20 @@ export function InterfaceManagementPage({ tick }: { tick: number }) {
   function edit(source: ManagedSource | null) {
     setEditing(source);
     setOpen(true);
+  }
+  async function setAllEnabled(enabled: boolean) {
+    setBulkBusy(enabled);
+    try {
+      const result = await write<{ changed: number }>('/knowledge/manage/sources/enabled', 'PUT', {
+        enabled,
+      });
+      notice.success(`已${enabled ? '启用' : '关闭'} ${result.changed} 个来源，下一轮采集生效`);
+      resource.refresh();
+    } catch (e) {
+      notice.error((e as Error).message);
+    } finally {
+      setBulkBusy(null);
+    }
   }
   async function test(source: ManagedSource) {
     setPreviewSource(source);
@@ -68,7 +83,33 @@ export function InterfaceManagementPage({ tick }: { tick: number }) {
             统一管理 RSS / Atom、Hacker News、百科与通用 JSON API；配置变更在下一轮采集生效。
           </Paragraph>
         </div>
-        <Space>
+        <Space wrap>
+          <Button
+            onClick={() => setAllEnabled(true)}
+            loading={bulkBusy === true}
+            disabled={
+              bulkBusy !== null ||
+              busyId !== null ||
+              resource.loading ||
+              !rows.some((row) => !row.enabled)
+            }
+            title="启用全部来源，包含搜索结果以外的来源"
+          >
+            全部启用
+          </Button>
+          <Button
+            onClick={() => setAllEnabled(false)}
+            loading={bulkBusy === false}
+            disabled={
+              bulkBusy !== null ||
+              busyId !== null ||
+              resource.loading ||
+              !rows.some((row) => row.enabled)
+            }
+            title="关闭全部来源，保留已采集数据；正在运行的采集不受影响"
+          >
+            全部关闭
+          </Button>
           <Button icon={<ReloadOutlined />} onClick={resource.refresh} loading={resource.loading}>
             刷新
           </Button>
@@ -150,6 +191,7 @@ export function InterfaceManagementPage({ tick }: { tick: number }) {
                     aria-label={`启用来源：${row.name}`}
                     checked={row.enabled}
                     loading={busyId === row.id}
+                    disabled={bulkBusy !== null}
                     onChange={async (enabled) => {
                       setBusyId(row.id);
                       try {

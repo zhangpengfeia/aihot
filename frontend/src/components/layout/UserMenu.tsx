@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Avatar, Button, Dropdown, Form, Input, Modal, message } from 'antd';
 import {
   ApiOutlined,
-  ClockCircleOutlined,
   LoginOutlined,
   LogoutOutlined,
   TeamOutlined,
@@ -40,16 +39,10 @@ export function UserMenu({
             ...(user?.role === 'admin'
               ? [
                   {
-                    key: 'status',
-                    icon: <ClockCircleOutlined />,
-                    label: '采集状态面板',
-                    onClick: () => onNavigate('status'),
-                  },
-                  {
-                    key: 'sources',
+                    key: 'collection',
                     icon: <ApiOutlined />,
-                    label: '采集接口管理',
-                    onClick: () => onNavigate('sources'),
+                    label: '采集管理',
+                    onClick: () => onNavigate('collection'),
                   },
                   {
                     key: 'users',

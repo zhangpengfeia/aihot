@@ -215,6 +215,14 @@ def meta(
             for s in sources
         ]
     )
+    # 来源分类也进入选择器，新增接口无需等待首轮采集才显示；遵守分类隐藏与合并规则。
+    source_categories = sorted(
+        {
+            resolve_category(source.category, rules)
+            for source in configured
+            if not category_hidden(source.category, rules)
+        }
+    )
     return {
         "categories": sorted(
             {
@@ -224,14 +232,17 @@ def meta(
             }
         ),
         "tag_groups": {
-            group: sorted(
-                {
-                    resolve_category(name, rules)
-                    for name in names
-                    if not category_hidden(name, rules)
-                }
-            )
-            for group, names in TAG_GROUPS.items()
+            "知识来源分类": source_categories,
+            **{
+                group: sorted(
+                    {
+                        resolve_category(name, rules)
+                        for name in names
+                        if not category_hidden(name, rules)
+                    }
+                )
+                for group, names in TAG_GROUPS.items()
+            },
         },
         "tag_count": len(TAG_TERMS),
         "category_catalog": {

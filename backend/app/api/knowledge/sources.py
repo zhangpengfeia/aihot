@@ -18,6 +18,7 @@ from app.models import (
     ManagedKnowledgeSource,
 )
 from app.schemas.knowledge import (
+    SourceBulkEnabled,
     SourceCreate,
     SourceUpdate,
 )
@@ -85,6 +86,22 @@ def sources(db: Session = Depends(get_session)):
             )
         ]
     }
+
+
+@router.put("/sources/enabled")
+def set_all_sources_enabled(body: SourceBulkEnabled, db: Session = Depends(get_session)):
+    """原子更新全部未删除来源；不删除历史数据，也不触发采集。"""
+    result = db.execute(
+        update(ManagedKnowledgeSource)
+        .where(
+            ManagedKnowledgeSource.deleted_at.is_(None),
+            ManagedKnowledgeSource.enabled != body.enabled,
+        )
+        .values(enabled=body.enabled, updated_at=utcnow())
+    )
+    changed = result.rowcount
+    db.commit()
+    return {"enabled": body.enabled, "changed": changed}
 
 
 @router.post("/sources", status_code=201)

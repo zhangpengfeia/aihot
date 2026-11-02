@@ -19,6 +19,11 @@ class SourceCreate(FeedSource):
         return value
 
 
+class SourceBulkEnabled(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = Field(strict=True)
+
+
 class SourceUpdate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     name: str | None = Field(None, min_length=1, max_length=200)
