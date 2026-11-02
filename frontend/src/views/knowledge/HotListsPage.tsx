@@ -96,6 +96,7 @@ export function HotListsPage({
         {displayed.map((source) => (
           <Col key={source.id} xs={24} lg={compact ? 24 : 12} xl={compact ? 24 : 8}>
             <Card
+              className="hot-platform-card"
               size={compact ? 'small' : 'default'}
               title={source.name}
               extra={
@@ -147,23 +148,25 @@ export function HotListsPage({
                   )
                   .slice(0, compact ? 5 : 50)
                   .map((item) => (
-                    <div key={`${item.id}-${item.rank}`}>
-                      <Space align="start">
-                        <Badge count={item.rank} color={item.rank <= 3 ? '#f97316' : '#94a3b8'} />
-                        <Typography.Link href={item.source_url} target="_blank" rel="noreferrer">
-                          {item.title}
-                        </Typography.Link>
-                      </Space>
-                      {(item.score_label || item.score !== null) && (
-                        <Typography.Text type="secondary">
-                          {' '}
-                          · 来源指标 {item.score_label ?? item.score?.toLocaleString()}
-                        </Typography.Text>
-                      )}
+                    <div className="hot-platform-item" key={`${item.id}-${item.rank}`}>
+                      <div className="hot-platform-item-content">
+                        <Space align="start">
+                          <Badge count={item.rank} color={item.rank <= 3 ? '#f97316' : '#94a3b8'} />
+                          <Typography.Link href={item.source_url} target="_blank" rel="noreferrer">
+                            {item.title}
+                          </Typography.Link>
+                        </Space>
+                        {(item.score_label || item.score !== null) && (
+                          <Typography.Text type="secondary">
+                            {' '}
+                            · 来源指标 {item.score_label ?? item.score?.toLocaleString()}
+                          </Typography.Text>
+                        )}
+                      </div>
                       {!compact && (
-                        <Space wrap style={{ marginTop: 8 }}>
-                          <PersonalButton kind="topic" targetId={item.id} />
-                          <AddToBoard topicId={item.id} />
+                        <Space size={4} className="hot-platform-item-actions">
+                          <PersonalButton kind="topic" targetId={item.id} compact />
+                          <AddToBoard topicId={item.id} compact />
                         </Space>
                       )}
                     </div>

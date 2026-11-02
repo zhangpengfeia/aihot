@@ -37,14 +37,14 @@ export function UserMenu({
               disabled: true,
             },
             { type: 'divider' },
-            {
-              key: 'status',
-              icon: <ClockCircleOutlined />,
-              label: '采集状态面板',
-              onClick: () => onNavigate('status'),
-            },
             ...(user?.role === 'admin'
               ? [
+                  {
+                    key: 'status',
+                    icon: <ClockCircleOutlined />,
+                    label: '采集状态面板',
+                    onClick: () => onNavigate('status'),
+                  },
                   {
                     key: 'sources',
                     icon: <ApiOutlined />,

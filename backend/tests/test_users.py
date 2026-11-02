@@ -38,6 +38,7 @@ def client():
 def test_public_and_admin_permissions(client):
     assert client.get("/api/auth/me").json() is None
     assert client.get("/api/admin/users").status_code == 401
+    assert client.get("/api/workspace/collection-status").status_code == 401
     assert client.post("/api/admin/collect/knowledge", json={}).status_code == 401
     assert client.get("/api/knowledge/manage/sources").status_code == 401
     assert client.get("/api/knowledge/manage/categories").status_code == 401
@@ -74,6 +75,7 @@ def test_public_and_admin_permissions(client):
     assert client.get("/api/auth/me").json() is None
     client.post("/api/auth/login", json={"username": "reader", "password": "reader-password-123"})
     assert client.get("/api/admin/users").status_code == 403
+    assert client.get("/api/workspace/collection-status").status_code == 403
     assert client.post("/api/admin/collect/knowledge", json={}).status_code == 403
     assert client.get("/api/knowledge/manage/sources").status_code == 403
     assert client.get("/api/knowledge/manage/categories").status_code == 403

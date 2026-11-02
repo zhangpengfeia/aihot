@@ -8,10 +8,12 @@ export function PersonalButton({
   kind,
   targetId,
   onSaved,
+  compact = false,
 }: {
   kind: 'repository' | 'topic';
   targetId: number;
   onSaved?: () => void;
+  compact?: boolean;
 }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -53,11 +55,14 @@ export function PersonalButton({
       {context}
       <Button
         icon={<StarOutlined />}
+        size={compact ? 'small' : 'middle'}
+        type={compact ? 'text' : 'default'}
+        aria-label="收藏 / 备注"
         onClick={load}
         disabled={!user}
-        title={!user ? '请先登录后收藏' : undefined}
+        title={!user ? '请先登录后收藏' : '收藏 / 备注'}
       >
-        收藏 / 备注
+        {!compact && '收藏 / 备注'}
       </Button>
       <Modal
         title="收藏与个人备注"
@@ -103,7 +108,7 @@ export function PersonalButton({
     </>
   );
 }
-export function AddToBoard({ topicId }: { topicId: number }) {
+export function AddToBoard({ topicId, compact = false }: { topicId: number; compact?: boolean }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [notice, context] = message.useMessage();
@@ -112,8 +117,11 @@ export function AddToBoard({ topicId }: { topicId: number }) {
       {context}
       <Button
         icon={<PlusOutlined />}
+        size={compact ? 'small' : 'middle'}
+        type={compact ? 'text' : 'default'}
+        aria-label="加入创作看板"
         disabled={!user}
-        title={!user ? '请先登录后使用创作看板' : undefined}
+        title={!user ? '请先登录后使用创作看板' : '加入创作看板'}
         loading={busy}
         onClick={async () => {
           setBusy(true);
@@ -129,7 +137,7 @@ export function AddToBoard({ topicId }: { topicId: number }) {
           }
         }}
       >
-        加入创作看板
+        {!compact && '加入创作看板'}
       </Button>
     </>
   );

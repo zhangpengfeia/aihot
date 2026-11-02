@@ -45,7 +45,7 @@ export function AppLayout({
           </div>
           {!collapsed && (
             <div>
-              <strong>AIHot</strong>
+              <strong>张鹏飞的私人工作台</strong>
               <span>AI 热门项目资料库</span>
             </div>
           )}

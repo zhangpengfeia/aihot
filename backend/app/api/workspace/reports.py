@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import same_origin_writes
+from app.core.auth import require_admin
 from app.core.config import get_settings
 from app.core.database import get_session
 from app.models import (
@@ -73,7 +74,7 @@ def daily_summary(db: Session = Depends(get_session)):
     }
 
 
-@router.get("/collection-status")
+@router.get("/collection-status", dependencies=[Depends(require_admin)])
 def collection_status(db: Session = Depends(get_session)):
     from app.services.skills.serialization import run_data
 
