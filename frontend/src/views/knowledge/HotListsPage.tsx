@@ -11,6 +11,7 @@ import {
   Row,
   Segmented,
   Space,
+  Spin,
   Tag,
   Typography,
 } from 'antd';
@@ -92,90 +93,102 @@ export function HotListsPage({
       )}
       {resource.error && <Alert type="error" title={resource.error} />}
       {!resource.loading && !displayed.length && <Empty description="没有匹配的平台或已配置榜单" />}
-      <Row gutter={[16, 16]}>
-        {displayed.map((source) => (
-          <Col key={source.id} xs={24} lg={compact ? 24 : 12} xl={compact ? 24 : 8}>
-            <Card
-              className="hot-platform-card"
-              size={compact ? 'small' : 'default'}
-              title={source.name}
-              extra={
-                <Tag color={source.status === 'success' ? 'green' : 'default'}>
+      <Spin spinning={resource.loading} tip="正在加载热搜榜单…">
+        <Row
+          gutter={[16, 16]}
+          style={{ minHeight: resource.loading && !displayed.length ? 160 : undefined }}
+        >
+          {displayed.map((source) => (
+            <Col key={source.id} xs={24} lg={compact ? 24 : 12} xl={compact ? 24 : 8}>
+              <Card
+                className="hot-platform-card"
+                size={compact ? 'small' : 'default'}
+                title={source.name}
+                extra={
+                  <Tag color={source.status === 'success' ? 'green' : 'default'}>
+                    {source.connection_status === 'reserved'
+                      ? '预留'
+                      : !source.enabled
+                        ? '未启用'
+                        : source.status === 'success'
+                          ? '已采集'
+                          : source.status === 'failed'
+                            ? '采集失败'
+                            : '待采集'}
+                  </Tag>
+                }
+              >
+                <Typography.Paragraph type="secondary">
+                  {source.region} · {source.category} ·{' '}
                   {source.connection_status === 'reserved'
-                    ? '预留'
-                    : !source.enabled
-                      ? '未启用'
-                      : source.status === 'success'
-                        ? '已采集'
-                        : source.status === 'failed'
-                          ? '采集失败'
-                          : '待采集'}
-                </Tag>
-              }
-            >
-              <Typography.Paragraph type="secondary">
-                {source.region} · {source.category} ·{' '}
-                {source.connection_status === 'reserved'
-                  ? '暂未接入 API'
-                  : `最近榜单：${formatTime(source.observed_at)}`}
-              </Typography.Paragraph>
-              {source.error && (
-                <Alert
-                  type="warning"
-                  title="最近采集失败，以下可能是历史榜单"
-                  description={source.error}
-                />
-              )}
-              {!source.items.length && (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={
-                    source.connection_status === 'reserved'
-                      ? '平台已预留，暂未接入采集接口'
-                      : source.enabled
-                        ? '暂无榜单，等待管理员或线上定时采集'
-                        : '接口已配置，待测试启用'
-                  }
-                />
-              )}
-              <Space orientation="vertical" className="full-width" size={16}>
-                {source.items
-                  .filter(
-                    (item) =>
-                      !query ||
-                      source.name.includes(query) ||
-                      item.title.toLowerCase().includes(query.toLowerCase()),
-                  )
-                  .slice(0, compact ? 5 : 50)
-                  .map((item) => (
-                    <div className="hot-platform-item" key={`${item.id}-${item.rank}`}>
-                      <div className="hot-platform-item-content">
-                        <Space align="start">
-                          <Badge count={item.rank} color={item.rank <= 3 ? '#f97316' : '#94a3b8'} />
-                          <Typography.Link href={item.source_url} target="_blank" rel="noreferrer">
-                            {item.title}
-                          </Typography.Link>
-                        </Space>
-                        {(item.score_label || item.score !== null) && (
-                          <Typography.Text type="secondary">
-                            {' '}
-                            · 来源指标 {item.score_label ?? item.score?.toLocaleString()}
-                          </Typography.Text>
+                    ? '暂未接入 API'
+                    : `最近榜单：${formatTime(source.observed_at)}`}
+                </Typography.Paragraph>
+                {source.error && (
+                  <Alert
+                    type="warning"
+                    title="最近采集失败，以下可能是历史榜单"
+                    description={source.error}
+                  />
+                )}
+                {!source.items.length && (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={
+                      source.connection_status === 'reserved'
+                        ? '平台已预留，暂未接入采集接口'
+                        : source.enabled
+                          ? '暂无榜单，等待管理员或线上定时采集'
+                          : '接口已配置，待测试启用'
+                    }
+                  />
+                )}
+                <Space orientation="vertical" className="full-width" size={16}>
+                  {source.items
+                    .filter(
+                      (item) =>
+                        !query ||
+                        source.name.includes(query) ||
+                        item.title.toLowerCase().includes(query.toLowerCase()),
+                    )
+                    .slice(0, compact ? 5 : 50)
+                    .map((item) => (
+                      <div className="hot-platform-item" key={`${item.id}-${item.rank}`}>
+                        <div className="hot-platform-item-content">
+                          <Space align="start">
+                            <Badge
+                              count={item.rank}
+                              color={item.rank <= 3 ? '#f97316' : '#94a3b8'}
+                            />
+                            <Typography.Link
+                              href={item.source_url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {item.title}
+                            </Typography.Link>
+                          </Space>
+                          {(item.score_label || item.score !== null) && (
+                            <Typography.Text type="secondary">
+                              {' '}
+                              · 来源指标 {item.score_label ?? item.score?.toLocaleString()}
+                            </Typography.Text>
+                          )}
+                        </div>
+                        {!compact && (
+                          <Space size={4} className="hot-platform-item-actions">
+                            <PersonalButton kind="topic" targetId={item.id} compact />
+                            <AddToBoard topicId={item.id} compact />
+                          </Space>
                         )}
                       </div>
-                      {!compact && (
-                        <Space size={4} className="hot-platform-item-actions">
-                          <PersonalButton kind="topic" targetId={item.id} compact />
-                          <AddToBoard topicId={item.id} compact />
-                        </Space>
-                      )}
-                    </div>
-                  ))}
-              </Space>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+                    ))}
+                </Space>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </Spin>
     </Space>
   );
 }

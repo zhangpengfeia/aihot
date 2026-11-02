@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Empty, Tooltip } from 'antd';
+import { Alert, Empty, Spin, Tooltip } from 'antd';
 import { StarFilled, StarOutlined } from '@ant-design/icons';
 import { useAuth } from '../../app/auth';
 import { useResource } from '../../hooks/useResource';
@@ -82,98 +82,106 @@ export function HotSearchCard({ tick }: { tick: number }) {
         />
       </div>
       {resource.error && <Alert type="error" title={resource.error} />}
-      <div className="home-hot-workspace">
-        <aside className="home-hot-sidebar" aria-label="卡片内热搜平台">
-          {visible.map((source) => (
-            <button
-              className={source.id === selected?.id ? 'is-active' : ''}
-              key={source.id}
-              onClick={() => setActive(source.id)}
-            >
-              <PlatformIcon platform={source} />
-              <span>{source.name}</span>
-            </button>
-          ))}
-          {!visible.length && (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配平台" />
-          )}
-        </aside>
-        <section className="home-hot-board" aria-label="卡片内平台榜单">
-          {selected ? (
-            <>
-              <header>
-                <PlatformIcon platform={selected} />
-                <strong>
-                  {selected.name}
-                  <span>
-                    {' '}
-                    · {selected.connection_status === 'reserved' ? '预留平台' : '实时热点'}
-                  </span>
-                </strong>
-                <Tooltip title={subscribed.includes(selected.id) ? '取消订阅' : '订阅平台'}>
-                  <button
-                    aria-label={`${subscribed.includes(selected.id) ? '取消订阅' : '订阅'}${selected.name}`}
-                    onClick={() =>
-                      save(
-                        scope,
-                        subscribed.includes(selected.id)
-                          ? subscribed.filter((id) => id !== selected.id)
-                          : [...subscribed, selected.id],
-                      )
-                    }
-                  >
-                    {subscribed.includes(selected.id) ? <StarFilled /> : <StarOutlined />}
-                  </button>
-                </Tooltip>
-              </header>
-              <div className="home-hot-meta">
-                {selected.region} ·{' '}
-                {selected.observed_at
-                  ? formatTime(selected.observed_at)
-                  : selected.connection_status === 'reserved'
-                    ? '暂未接入 API'
-                    : '等待采集'}
-              </div>
-              <div className="home-hot-rows">
-                {selected.error && (
-                  <div className="home-hot-error">
-                    最近采集失败，以下可能是历史记录：{selected.error}
-                  </div>
-                )}
-                {!selected.items.length && (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={
-                      selected.connection_status === 'reserved'
-                        ? '平台已预留，暂未接入接口'
-                        : '暂无已采集榜单'
-                    }
-                  />
-                )}
-                {selected.items.map((item) => (
-                  <a
-                    className="home-hot-row"
-                    key={`${item.id}-${item.rank}`}
-                    href={item.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <span className={`home-hot-rank rank-${item.rank}`}>{item.rank}</span>
-                    <span className="home-hot-title">{item.title}</span>
-                    <span className="home-hot-score">
-                      {item.score_label ?? item.score?.toLocaleString() ?? '—'}
+      <Spin
+        spinning={resource.loading}
+        tip={resource.data ? '正在刷新热搜榜单…' : '正在加载热搜榜单…'}
+      >
+        <div
+          className="home-hot-workspace"
+          style={{ minHeight: resource.loading && !resource.data ? 240 : undefined }}
+        >
+          <aside className="home-hot-sidebar" aria-label="卡片内热搜平台">
+            {visible.map((source) => (
+              <button
+                className={source.id === selected?.id ? 'is-active' : ''}
+                key={source.id}
+                onClick={() => setActive(source.id)}
+              >
+                <PlatformIcon platform={source} />
+                <span>{source.name}</span>
+              </button>
+            ))}
+            {!visible.length && (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配平台" />
+            )}
+          </aside>
+          <section className="home-hot-board" aria-label="卡片内平台榜单">
+            {selected ? (
+              <>
+                <header>
+                  <PlatformIcon platform={selected} />
+                  <strong>
+                    {selected.name}
+                    <span>
+                      {' '}
+                      · {selected.connection_status === 'reserved' ? '预留平台' : '实时热点'}
                     </span>
-                  </a>
-                ))}
-              </div>
-            </>
-          ) : (
-            <Empty
-              description={resource.loading ? '正在加载平台…' : '没有匹配的平台，请调整筛选'}
-            />
-          )}
-        </section>
-      </div>
+                  </strong>
+                  <Tooltip title={subscribed.includes(selected.id) ? '取消订阅' : '订阅平台'}>
+                    <button
+                      aria-label={`${subscribed.includes(selected.id) ? '取消订阅' : '订阅'}${selected.name}`}
+                      onClick={() =>
+                        save(
+                          scope,
+                          subscribed.includes(selected.id)
+                            ? subscribed.filter((id) => id !== selected.id)
+                            : [...subscribed, selected.id],
+                        )
+                      }
+                    >
+                      {subscribed.includes(selected.id) ? <StarFilled /> : <StarOutlined />}
+                    </button>
+                  </Tooltip>
+                </header>
+                <div className="home-hot-meta">
+                  {selected.region} ·{' '}
+                  {selected.observed_at
+                    ? formatTime(selected.observed_at)
+                    : selected.connection_status === 'reserved'
+                      ? '暂未接入 API'
+                      : '等待采集'}
+                </div>
+                <div className="home-hot-rows">
+                  {selected.error && (
+                    <div className="home-hot-error">
+                      最近采集失败，以下可能是历史记录：{selected.error}
+                    </div>
+                  )}
+                  {!selected.items.length && (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description={
+                        selected.connection_status === 'reserved'
+                          ? '平台已预留，暂未接入接口'
+                          : '暂无已采集榜单'
+                      }
+                    />
+                  )}
+                  {selected.items.map((item) => (
+                    <a
+                      className="home-hot-row"
+                      key={`${item.id}-${item.rank}`}
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span className={`home-hot-rank rank-${item.rank}`}>{item.rank}</span>
+                      <span className="home-hot-title">{item.title}</span>
+                      <span className="home-hot-score">
+                        {item.score_label ?? item.score?.toLocaleString() ?? '—'}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <Empty
+                description={resource.loading ? '正在加载平台…' : '没有匹配的平台，请调整筛选'}
+              />
+            )}
+          </section>
+        </div>
+      </Spin>
     </div>
   );
 }
