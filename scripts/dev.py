@@ -25,6 +25,9 @@ def preflight() -> None:
         raise RuntimeError("请安装 Node.js / npm，并先执行 make install")
     for port in (8000, 5173):
         with socket.socket() as probe:
+            # 与 Uvicorn / Node 一致：允许服务退出后的 TIME_WAIT 地址复用，
+            # 不设置 SO_REUSEPORT，仍拒绝正在监听的服务。
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 probe.bind(("127.0.0.1", port))
             except OSError as exc:
