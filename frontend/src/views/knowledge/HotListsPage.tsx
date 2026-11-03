@@ -35,6 +35,7 @@ export function HotListsPage({
   const resource = useResource<{ items: HotSource[]; platforms?: HotPlatform[] }>(
     '/knowledge/hotlists',
     tick,
+    { silentRefresh: true },
   );
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState('全部');
@@ -161,7 +162,7 @@ export function HotListsPage({
                     )
                     .slice(0, compact ? 5 : 50)
                     .map((item) => (
-                      <div className="hot-platform-item" key={`${item.id}-${item.rank}`}>
+                      <div className="hot-platform-item" key={item.id}>
                         <div className="hot-platform-item-content">
                           <Space align="start">
                             <Badge
