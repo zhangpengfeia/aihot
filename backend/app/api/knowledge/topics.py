@@ -369,6 +369,18 @@ def hotlists(
                 "connection_status": "configured",
             }
         )
+
+    def hotlist_priority(platform):
+        """卡片排序：采集完成 > 采集失败（有历史采集记录）> 采集失败 > 配置未采集 > 未配置。"""
+        if platform["connection_status"] == "reserved":
+            return 4
+        if platform["status"] == "success":
+            return 0
+        if platform["status"] == "failed":
+            return 1 if platform["items"] else 2
+        return 3
+
+    platforms.sort(key=hotlist_priority)
     return {
         "items": [item for item in result if not region or by_id[item["id"]].region == region],
         "platforms": platforms,

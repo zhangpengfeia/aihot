@@ -13,6 +13,7 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useResource } from '../../hooks/useResource';
@@ -105,17 +106,31 @@ export function HotListsPage({
                 size={compact ? 'small' : 'default'}
                 title={source.name}
                 extra={
-                  <Tag color={source.status === 'success' ? 'green' : 'default'}>
-                    {source.connection_status === 'reserved'
-                      ? '预留'
-                      : !source.enabled
-                        ? '未启用'
-                        : source.status === 'success'
-                          ? '已采集'
+                  <Tooltip
+                    title={
+                      source.error ? `最近采集失败，以下可能是历史榜单：${source.error}` : undefined
+                    }
+                  >
+                    <Tag
+                      color={
+                        source.status === 'success'
+                          ? 'green'
                           : source.status === 'failed'
-                            ? '采集失败'
-                            : '待采集'}
-                  </Tag>
+                            ? 'red'
+                            : 'default'
+                      }
+                    >
+                      {source.connection_status === 'reserved'
+                        ? '预留'
+                        : !source.enabled
+                          ? '未启用'
+                          : source.status === 'success'
+                            ? '已采集'
+                            : source.status === 'failed'
+                              ? '采集失败'
+                              : '待采集'}
+                    </Tag>
+                  </Tooltip>
                 }
               >
                 <Typography.Paragraph type="secondary">
@@ -124,13 +139,6 @@ export function HotListsPage({
                     ? '暂未接入 API'
                     : `最近榜单：${formatTime(source.observed_at)}`}
                 </Typography.Paragraph>
-                {source.error && (
-                  <Alert
-                    type="warning"
-                    title="最近采集失败，以下可能是历史榜单"
-                    description={source.error}
-                  />
-                )}
                 {!source.items.length && (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}

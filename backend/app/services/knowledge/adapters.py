@@ -133,7 +133,11 @@ def collect_source(source, fetch):
         return rows
     payload = json.loads(fetch(url))
     if source.adapter == "hotlist":
-        if not isinstance(payload, dict) or payload.get("code", 200) != 200:
+        try:
+            success_code = int(source.options.get("success_code", 200))
+        except (TypeError, ValueError):
+            success_code = 200
+        if not isinstance(payload, dict) or payload.get("code", 200) != success_code:
             raise ValueError("热搜聚合接口返回失败状态")
         entries = value_at(payload, source.options.get("items_path", "data"), [])
         if not isinstance(entries, list) or not entries:

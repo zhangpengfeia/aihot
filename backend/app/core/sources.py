@@ -44,6 +44,7 @@ class FeedSource(BaseModel):
             "date_field",
             "score_field",
             "url_prefix",
+            "success_code",
         }
         if set(self.options) - allowed or any(len(value) > 500 for value in self.options.values()):
             raise ValueError("字段映射仅支持已列出的字段，单个映射长度不能超过 500")
@@ -300,6 +301,121 @@ for platform_id, name, provider_type, category in [
             },
         }
     )
+
+# 2026-11-03 实测接入：UAPI 聚合覆盖目录中原先“预留/仅停用模板”的平台。
+# hot_value 为空或语义混杂（如“评论:4 点赞:22”）的平台不配置 score_field；
+# 聚合接口不给直链的平台（吾爱破解/微信读书/历史上的今天）用百度搜索词链接，保持可追溯。
+for platform_id, name, provider_type, category, use_score, url_prefix in [
+    ("bilibili", "哔哩哔哩", "bilibili", "文化", True, None),
+    ("zhihu-daily", "知乎日报", "zhihu-daily", "文化", False, None),
+    ("qq-news", "腾讯新闻", "qq-news", "社会", False, None),
+    ("36kr", "36氪", "36kr", "商业", False, None),
+    ("huxiu", "虎嗅网", "huxiu", "商业", False, None),
+    ("sspai", "少数派", "sspai", "数字生活", False, None),
+    ("juejin", "掘金", "juejin", "编程语言", True, None),
+    ("csdn", "CSDN", "csdn", "编程语言", True, None),
+    ("52pojie", "吾爱破解", "52pojie", "网络安全", False, "https://www.baidu.com/s?wd="),
+    ("douban-group", "豆瓣社区", "douban-group", "生活", True, None),
+    ("douban-movie", "豆瓣电影", "douban-movie", "电影", True, None),
+    ("weread", "微信读书", "weread", "阅读", True, "https://www.baidu.com/s?wd="),
+    ("hupu", "虎扑社区", "hupu", "体育", True, None),
+    ("acfun", "AcFun", "acfun", "动画", True, None),
+    ("ifanr", "爱范儿", "ifanr", "科技", False, None),
+    ("smzdm", "什么值得买", "smzdm", "购物", False, None),
+    ("history", "历史上的今天", "history", "历史", False, "https://www.baidu.com/s?wd="),
+]:
+    options = {"items_path": "list", "platform_id": platform_id}
+    if use_score:
+        options["score_field"] = "hot_value"
+    if url_prefix:
+        options["url_prefix"] = url_prefix
+    DEFAULT_SOURCES.append(
+        {
+            "name": f"热搜 · {name}（UAPI 聚合）",
+            "url": f"https://uapis.cn/api/v1/misc/hotboard?type={provider_type}",
+            "category": category,
+            "region": "国内",
+            "adapter": "hotlist",
+            "item_limit": 50,
+            "options": options,
+        }
+    )
+
+# 华尔街见闻官方热文接口（2026-11-03 实测），成功状态码为 20000，走 success_code 映射。
+DEFAULT_SOURCES.append(
+    {
+        "name": "热搜 · 华尔街见闻（官方 API）",
+        "url": "https://api-one-wscn.awtmt.com/apiv1/content/articles/hot?period=day",
+        "category": "财经",
+        "region": "国内",
+        "adapter": "hotlist",
+        "item_limit": 50,
+        "options": {
+            "items_path": "data.day_items",
+            "title_field": "title",
+            "url_field": "uri",
+            "score_field": "pageviews",
+            "success_code": "20000",
+            "platform_id": "wallstreetcn",
+        },
+    }
+)
+
+# 新浪财经 7x24 快讯（zhibo 官方接口，2026-11-03 实测），标题/直链字段为 rich_text/docurl。
+DEFAULT_SOURCES.append(
+    {
+        "name": "热搜 · 新浪财经新闻（官方 API）",
+        "url": "https://zhibo.sina.com.cn/api/zhibo/feed?zhibo_id=152&page=1&page_size=50",
+        "category": "财经",
+        "region": "国内",
+        "adapter": "hotlist",
+        "item_limit": 50,
+        "options": {
+            "items_path": "result.data.feed.list",
+            "title_field": "rich_text",
+            "url_field": "docurl",
+            "platform_id": "sina-finance",
+        },
+    }
+)
+
+# 开眼视频每日精选（baobab 官方接口，2026-11-03 实测），只取最新一期 issue 的视频。
+DEFAULT_SOURCES.append(
+    {
+        "name": "热搜 · 开眼视频（官方 API）",
+        "url": "http://baobab.kaiyanapp.com/api/v2/feed?num=10",
+        "category": "文化",
+        "region": "国内",
+        "adapter": "hotlist",
+        "item_limit": 10,
+        "options": {
+            "items_path": "issueList.0.itemList",
+            "title_field": "data.title",
+            "url_field": "data.webUrl.raw",
+            "platform_id": "eyepetizer",
+        },
+    }
+)
+
+# 猫眼即将上映榜（官方接口，2026-11-03 实测），榜单只给影片 id，用猫眼影片页拼链接，想看数作为指标。
+DEFAULT_SOURCES.append(
+    {
+        "name": "热搜 · 即将上映电影（猫眼 API）",
+        "url": "https://m.maoyan.com/ajax/comingList?token=&optimus_uuid=&optimus_risk_level=71&optimus_code=10",
+        "category": "电影",
+        "region": "国内",
+        "adapter": "hotlist",
+        "item_limit": 20,
+        "options": {
+            "items_path": "coming",
+            "title_field": "nm",
+            "url_field": "id",
+            "url_prefix": "https://www.maoyan.com/films/",
+            "score_field": "wish",
+            "platform_id": "coming-movies",
+        },
+    }
+)
 
 
 # 长青科普目录：仅导入实测可解析的端点；沿用来源管理增量导入与独立启停。

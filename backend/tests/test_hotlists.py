@@ -154,13 +154,16 @@ def test_platform_provider_grouping_and_uapi_parsing(context):  # noqa: F811
     from sqlalchemy import select
 
     from app.core.config import Settings
+    from app.core.hot_platforms import PLATFORMS_BY_ID
     from app.core.sources import DEFAULT_SOURCES
     from app.models import ManagedKnowledgeSource
     from app.services.knowledge.management import seed_sources
 
     client, db, _ = context
     sources = [FeedSource(**s) for s in DEFAULT_SOURCES if s["url"].startswith("https://uapis.cn/")]
-    assert {s.options["platform_id"] for s in sources} == {"baidu", "xiaohongshu"}
+    assert {"baidu", "xiaohongshu"} <= {s.options["platform_id"] for s in sources}
+    # 新增的 UAPI 来源必须能关联到目录平台，且不虚构目录之外的平台。
+    assert {s.options["platform_id"] for s in sources} <= set(PLATFORMS_BY_ID)
     seed_sources(db, Settings(knowledge_sources=sources))
     for source in sources:
         payload = {
@@ -175,7 +178,7 @@ def test_platform_provider_grouping_and_uapi_parsing(context):  # noqa: F811
             ],
         }
         records = collect_source(source, lambda url, payload=payload: json.dumps(payload).encode())
-        assert records[0]["score"] == 12345
+        assert records[0]["score"] == (12345 if source.options.get("score_field") else None)
         assert records[0]["hot_rank"] == 7
         save_topics(db, records, utcnow())
     db.commit()
@@ -190,3 +193,227 @@ def test_platform_provider_grouping_and_uapi_parsing(context):  # noqa: F811
         assert len(platforms[key]["items"]) == 1
     assert platforms["youtube"]["connection_status"] == "reserved"
     assert client.get("/api/knowledge/hotlists?region=国外").json()["items"] == []
+
+
+def test_wallstreetcn_success_code_and_search_prefix():
+    source = SOURCE.model_copy(
+        update={
+            "options": {
+                "items_path": "data.day_items",
+                "title_field": "title",
+                "url_field": "uri",
+                "score_field": "pageviews",
+                "success_code": "20000",
+                "platform_id": "wallstreetcn",
+            }
+        }
+    )
+    payload = {
+        "code": 20000,
+        "data": {
+            "day_items": [
+                {
+                    "title": "芯片股拖累美股指",
+                    "uri": "https://wallstreetcn.com/articles/3784983",
+                    "pageviews": 199332,
+                }
+            ]
+        },
+    }
+    rows = collect_source(source, lambda url: json.dumps(payload).encode())
+    assert rows[0]["score"] == 199332
+    assert rows[0]["source_url"] == "https://wallstreetcn.com/articles/3784983"
+    # 未配置 success_code 时，非 200 的状态码仍然视为失败。
+    with pytest.raises(ValueError):
+        collect_source(
+            SOURCE.model_copy(update={"options": {"items_path": "data"}}),
+            lambda url: json.dumps({"code": 20000, "data": payload["data"]["day_items"]}).encode(),
+        )
+
+
+def test_official_api_hotlist_sources():
+    """新浪财经 7x24、开眼每日精选、猫眼即将上映榜的字段映射与平台关联。"""
+    from types import SimpleNamespace
+
+    from app.core.hot_platforms import platform_for_source
+    from app.core.sources import DEFAULT_SOURCES
+
+    definitions = [
+        s
+        for s in DEFAULT_SOURCES
+        if any(
+            host in s["url"] for host in ("zhibo.sina.com.cn", "kaiyanapp.com", "maoyan.com/ajax")
+        )
+    ]
+    assert {s["options"]["platform_id"] for s in definitions} == {
+        "sina-finance",
+        "eyepetizer",
+        "coming-movies",
+    }
+    payloads = {
+        "sina-finance": {
+            "result": {
+                "status": {"code": 0},
+                "data": {
+                    "feed": {
+                        "list": [
+                            {
+                                "rich_text": "高盛上调欧洲天然气价格预测",
+                                "docurl": "https://finance.sina.cn/7x24/detail-inixmnpy9976924.d.html",
+                            }
+                        ]
+                    }
+                },
+            }
+        },
+        "eyepetizer": {
+            "issueList": [
+                {
+                    "itemList": [
+                        {
+                            "data": {
+                                "title": "获奖手绘动画精选",
+                                "webUrl": {
+                                    "raw": "http://www.eyepetizer.net/detail.html?vid=225919"
+                                },
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "coming-movies": {
+            "coming": [{"nm": "白衣逆行者", "id": 1500853, "wish": 20715}],
+        },
+    }
+    expectations = {
+        "sina-finance": (
+            "高盛上调欧洲天然气价格预测",
+            "https://finance.sina.cn/7x24/detail-inixmnpy9976924.d.html",
+            None,
+        ),
+        "eyepetizer": (
+            "获奖手绘动画精选",
+            "http://www.eyepetizer.net/detail.html?vid=225919",
+            None,
+        ),
+        "coming-movies": ("白衣逆行者", "https://www.maoyan.com/films/1500853", 20715),
+    }
+    for definition in definitions:
+        source = FeedSource(**definition)
+        rows = collect_source(
+            source,
+            lambda url, definition=definition: json.dumps(
+                payloads[definition["options"]["platform_id"]]
+            ).encode(),
+        )
+        title, url, score = expectations[definition["options"]["platform_id"]]
+        assert rows[0]["title"] == title
+        assert rows[0]["source_url"] == url
+        assert rows[0]["score"] == score
+        assert (
+            platform_for_source(
+                SimpleNamespace(
+                    name=source.name,
+                    options=source.options,
+                    origin_key=None,
+                    source_key=None,
+                    url=str(source.url),
+                )
+            )
+            == definition["options"]["platform_id"]
+        )
+
+
+def test_hotlists_success_first_and_failed_last(context):  # noqa: F811
+    from app.core.config import Settings
+    from app.core.hot_platforms import HOT_PLATFORM_CATALOG
+    from app.models import KnowledgeSourceState
+    from app.services.knowledge.management import seed_sources
+
+    client, db, _ = context
+    definitions = [
+        FeedSource(
+            name="热搜 · 知乎日报（测试）",
+            url="https://example.com/hot/zhihu-daily",
+            adapter="hotlist",
+            category="文化",
+            region="国内",
+        ),
+        FeedSource(
+            name="热搜 · 吾爱破解（测试）",
+            url="https://example.com/hot/52pojie",
+            adapter="hotlist",
+            category="网络安全",
+            region="国内",
+        ),
+        FeedSource(
+            name="热搜 · 腾讯新闻（测试）",
+            url="https://example.com/hot/qq-news",
+            adapter="hotlist",
+            category="社会",
+            region="国内",
+        ),
+        FeedSource(
+            name="热搜 · 虎扑社区（测试）",
+            url="https://example.com/hot/hupu",
+            adapter="hotlist",
+            category="体育",
+            region="国内",
+        ),
+    ]
+    now = utcnow()
+    # (来源, 采集状态, 是否有历史榜单快照)：依次对应 采集完成 / 采集失败（有历史记录）/
+    # 采集失败 / 配置未采集。
+    plan = list(
+        zip(
+            definitions,
+            ["success", "failed", "failed", "pending"],
+            [True, True, False, False],
+            strict=True,
+        )
+    )
+    for source, status, has_snapshot in plan:
+        records = collect_source(
+            source,
+            lambda url, name=source.name: json.dumps(
+                {
+                    "code": 200,
+                    "data": [
+                        {
+                            "title": f"{name}公开热搜词",
+                            "url": "https://example.com/entry",
+                        }
+                    ],
+                }
+            ).encode(),
+        )
+        if status != "pending":
+            if has_snapshot:
+                save_topics(db, records, now)
+            db.add(
+                KnowledgeSourceState(
+                    source_key=source_key(source.url),
+                    name=source.name,
+                    url=str(source.url),
+                    category=source.category,
+                    status=status,
+                    last_attempt=now,
+                    last_success=now if status == "success" else None,
+                    item_count=1 if has_snapshot else 0,
+                    error="HTTPStatusError" if status == "failed" else None,
+                )
+            )
+    seed_sources(db, Settings(knowledge_sources=definitions))
+    db.commit()
+    platforms = client.get("/api/knowledge/hotlists").json()["platforms"]
+    ids = [p["id"] for p in platforms]
+    assert len(ids) == len(HOT_PLATFORM_CATALOG)
+    # 采集完成 > 采集失败（有历史采集记录）> 采集失败 > 配置未采集 > 未配置。
+    assert ids[:4] == ["zhihu-daily", "52pojie", "qq-news", "hupu"]
+    assert all(p["connection_status"] == "reserved" for p in platforms[4:])
+    by_id = {p["id"]: p for p in platforms}
+    assert by_id["52pojie"]["error"] == "HTTPStatusError"
+    assert len(by_id["52pojie"]["items"]) == 1
+    assert by_id["qq-news"]["items"] == []
+    assert by_id["zhihu-daily"]["items"][0]["title"] == "热搜 · 知乎日报（测试）公开热搜词"

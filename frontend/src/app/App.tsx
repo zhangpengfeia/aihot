@@ -65,7 +65,7 @@ function CachedPage({
 function PageContent({ view, onSelect }: { view: ViewKey; onSelect: (id: number) => void }) {
   const { user } = useAuth();
   const { tick, refresh } = useRefreshTick(
-    view === 'today' ? 15 * 60_000 : view === 'history' ? null : 60_000,
+    view === 'today' || view === 'hotlists' ? 15 * 60_000 : view === 'history' ? null : 60_000,
   );
   let content;
   switch (view) {
