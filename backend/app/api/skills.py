@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, defer
 
 from app.core.database import get_session
 from app.models import Ranking, Run, Snapshot
-from app.services.skills.serialization import run_data, snapshot_data
+from app.services.skills.serialization import run_data, snapshot_data, snapshot_detail_data
 from app.utils.time import SHANGHAI, iso
 
 router = APIRouter()
@@ -81,7 +81,7 @@ def find_snapshot(session: Session, snapshot_id: int) -> Snapshot:
 @router.get("/api/snapshots/{snapshot_id}")
 def detail(snapshot_id: int, session: Session = Depends(get_session)):
     s = find_snapshot(session, snapshot_id)
-    return {**snapshot_data(s), "readme": s.readme}
+    return {**snapshot_detail_data(s), "readme": s.readme}
 
 
 @router.get("/api/snapshots/{snapshot_id}/markdown", response_class=PlainTextResponse)
@@ -116,25 +116,35 @@ def skills(
     session: Session = Depends(get_session),
 ):
     """每个仓库展示最近一次有效快照，掉出本期热榜的历史项目仍可搜索。"""
-    from sqlalchemy import or_
+    from sqlalchemy import func, or_
 
     from app.services.skills.metadata import extract_metadata
 
-    # 通过「最新」标志直接过滤，避免 MAX(id) GROUP BY repo_id 全表扫描。
-    query = (
-        select(Snapshot)
-        .where(Snapshot.is_latest.is_(True))
-        .order_by(Snapshot.stars.desc(), Snapshot.repo_id)
-        .options(defer(Snapshot.readme))
-    )
+    # 通过「最新」标志直接过滤，避免 MAX(id) GROUP BY repo_id 全表扫描；
+    # 列表不加载 README 与安装说明两个大字段。
+    conditions = [Snapshot.is_latest.is_(True)]
     if q.strip():
-        query = query.where(
+        conditions.append(
             or_(
                 Snapshot.full_name.contains(q.strip(), autoescape=True),
                 Snapshot.description.contains(q.strip(), autoescape=True),
             )
         )
-    # 多标签分类数量较小，在已缩小到「每个仓库最新快照」的集合上应用层精确匹配，
+    query = (
+        select(Snapshot)
+        .where(*conditions)
+        .order_by(Snapshot.stars.desc(), Snapshot.repo_id)
+        .options(defer(Snapshot.readme), defer(Snapshot.installation))
+    )
+    start = (page - 1) * page_size
+    if not category:
+        # 无分类过滤时直接 SQL 分页，只读取当前页，避免整表加载与序列化。
+        total = session.scalar(select(func.count()).select_from(Snapshot).where(*conditions))
+        items = [
+            snapshot_data(s) for s in session.scalars(query.offset(start).limit(page_size))
+        ]
+        return {"total": total, "items": items}
+    # 分类过滤数量较小，在「每个仓库最新快照」集合上应用层精确匹配，
     # 避免不同数据库 JSON 比较语义不一致。
     found = []
     for snapshot in session.scalars(query):
@@ -144,11 +154,8 @@ def skills(
             categories, installation = extract_metadata(
                 snapshot.full_name, snapshot.description or "", snapshot.readme or ""
             )
-            item["categories"], item["installation"] = categories, installation
-        if category and category not in item["categories"] + (item.get("analysis") or {}).get(
-            "domains", []
-        ):
+            item["categories"] = categories
+        if category not in item["categories"] + (item.get("analysis") or {}).get("domains", []):
             continue
         found.append(item)
-    start = (page - 1) * page_size
     return {"total": len(found), "items": found[start : start + page_size]}

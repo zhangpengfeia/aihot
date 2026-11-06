@@ -32,6 +32,7 @@ export function HotSearchCard({ tick }: { tick: number }) {
   const resource = useResource<{ items: HotSource[]; platforms?: HotPlatform[] }>(
     '/knowledge/hotlists',
     tick,
+    { silentRefresh: true, cache: true },
   );
   const { user } = useAuth();
   const scope = dashboardScope(user?.id);

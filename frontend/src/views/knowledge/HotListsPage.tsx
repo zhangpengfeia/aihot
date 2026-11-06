@@ -35,7 +35,7 @@ export function HotListsPage({
   const resource = useResource<{ items: HotSource[]; platforms?: HotPlatform[] }>(
     '/knowledge/hotlists',
     tick,
-    { silentRefresh: true },
+    { silentRefresh: true, cache: true },
   );
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState('全部');

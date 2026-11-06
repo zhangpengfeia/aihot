@@ -347,7 +347,8 @@ def hotlists(
             {
                 **source_data(session, source, counts, rules),
                 "observed_at": iso(snapshot.observed_at) if snapshot else None,
-                "items": snapshot.entries if snapshot else [],
+                # 每平台最多返回 50 条，前端最多展示 50 条，避免传输与解析整榜。
+                "items": (snapshot.entries or [])[:50] if snapshot else [],
             }
         )
     from app.core.hot_platforms import HOT_PLATFORM_CATALOG, platform_for_source

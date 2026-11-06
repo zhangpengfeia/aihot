@@ -14,7 +14,7 @@ import {
   Typography,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { get } from '../../api/http';
+import { get, readCache } from '../../api/http';
 import { type Snapshot } from '../../types/skills';
 import { formatTime } from '../../utils/date';
 const { Paragraph, Text } = Typography;
@@ -54,11 +54,13 @@ export default function SkillLibraryPage({
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError('');
     const params = new URLSearchParams({ page: String(page), q });
     if (category) params.set('category', category);
-    get<typeof data>(`/skills?${params}`, controller.signal)
+    const path = `/skills?${params}`;
+    // 命中缓存则不转圈，立即渲染旧结果并在后台刷新。
+    if (readCache(path) === undefined) setLoading(true);
+    setError('');
+    get<typeof data>(path, controller.signal, { cache: true })
       .then(setData)
       .catch((e) => {
         if (!controller.signal.aborted) setError((e as Error).message);

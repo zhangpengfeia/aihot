@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { get } from '../../../api/http';
+import { get, readCache } from '../../../api/http';
 import type { Board, Run } from '../../../types/skills';
 export function useSkillRankings(history: boolean, tick: number) {
   const [kind, setKind] = useState<'stars' | 'growth'>('stars');
@@ -15,9 +15,10 @@ export function useSkillRankings(history: boolean, tick: number) {
   const previousQuery = useRef('');
   useEffect(() => {
     const controller = new AbortController();
-    setRunsLoading(true);
+    const path = `/runs?limit=100${history && day ? `&day=${day}` : ''}`;
+    if (readCache(path) === undefined) setRunsLoading(true);
     setRunError('');
-    get<Run[]>(`/runs?limit=100${history && day ? `&day=${day}` : ''}`, controller.signal)
+    get<Run[]>(path, controller.signal, { cache: true })
       .then(setRuns)
       .catch((e) => {
         if (!controller.signal.aborted) setRunError((e as Error).message);
@@ -33,16 +34,23 @@ export function useSkillRankings(history: boolean, tick: number) {
     const query = `/rankings?kind=${kind}${history ? `&run_id=${runId}` : ''}`;
     const changed = previousQuery.current !== query;
     previousQuery.current = query;
-    // 同一榜单后台更新时保留内容，切换排名或历史批次才清空。
-    setLoading(true);
-    setError('');
-    if (changed) setBoard({ run: null, items: [] });
     // 历史模式必须明确选择批次，避免日期与当前显示的数据不一致。
     if (history && runId === undefined) {
       setLoading(false);
       return () => controller.abort();
     }
-    get<Board>(query, controller.signal)
+    const cached = readCache<Board>(query);
+    if (cached !== undefined) {
+      // 命中缓存直接渲染，不转圈；后台静默刷新。
+      setBoard(cached);
+      setLoading(false);
+      setError('');
+    } else {
+      setLoading(true);
+      setError('');
+      if (changed) setBoard({ run: null, items: [] });
+    }
+    get<Board>(query, controller.signal, { cache: true })
       .then(setBoard)
       .catch((e) => {
         if (!controller.signal.aborted) setError((e as Error).message);

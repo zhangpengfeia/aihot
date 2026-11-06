@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { get } from '../../../api/http';
+import { get, readCache } from '../../../api/http';
 import { useRefreshTick } from '../../../hooks/useRefreshTick';
 import type { Meta, Topic } from '../../../types/knowledge';
 /** 知识列表的筛选、分页和刷新状态，视图仅负责渲染。 */
@@ -14,11 +14,14 @@ export function useKnowledgeTopics() {
   const [sourceId, setSourceId] = useState<number>();
   const [sortBy, setSortBy] = useState('published');
   const [data, setData] = useState<{ total: number; items: Topic[] }>({ total: 0, items: [] });
-  const [meta, setMeta] = useState<Meta>({
-    categories: [],
-    total: 0,
-    sources: [],
-  });
+  const [meta, setMeta] = useState<Meta>(
+    () =>
+      readCache<Meta>('/knowledge/meta') ?? {
+        categories: [],
+        total: 0,
+        sources: [],
+      },
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { tick, refresh } = useRefreshTick();
@@ -33,9 +36,11 @@ export function useKnowledgeTopics() {
     if (region) params.set('region', region);
     if (kind) params.set('topic_kind', kind);
     if (day) params.set('day', day);
-    setLoading(true);
+    const path = `/knowledge/topics?${params}`;
+    // 命中缓存则不转圈，立即渲染旧结果并在后台刷新。
+    if (readCache(path) === undefined) setLoading(true);
     setError('');
-    get<typeof data>(`/knowledge/topics?${params}`, controller.signal)
+    get<typeof data>(path, controller.signal, { cache: true })
       .then(setData)
       .catch((e) => {
         if (!controller.signal.aborted) setError((e as Error).message);
@@ -47,7 +52,7 @@ export function useKnowledgeTopics() {
   }, [page, pageSize, sourceId, sortBy, labels, kind, region, q, day, tick]);
   useEffect(() => {
     const controller = new AbortController();
-    get<Meta>('/knowledge/meta', controller.signal)
+    get<Meta>('/knowledge/meta', controller.signal, { cache: true })
       .then(setMeta)
       .catch(() => {
         // 元数据读取失败不阻塞列表；下次周期重试。

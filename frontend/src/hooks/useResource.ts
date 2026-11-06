@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { get } from '../api/http';
+import { get, readCache } from '../api/http';
 export function useResource<T>(
   path: string,
   tick: number,
-  { silentRefresh = false }: { silentRefresh?: boolean } = {},
+  { silentRefresh = false, cache = false }: { silentRefresh?: boolean; cache?: boolean } = {},
 ) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<T | null>(() => (cache ? (readCache<T>(path) ?? null) : null));
+  const [loading, setLoading] = useState(() => (cache ? readCache<T>(path) === undefined : true));
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
   const loadedPath = useRef<string | null>(null);
@@ -20,10 +20,11 @@ export function useResource<T>(
       lastRequest.current.revision === revision;
     lastRequest.current = { path, revision };
     if (!background) {
-      setLoading(true);
+      // 命中缓存时不转圈，仅首次无缓存才进入加载态。
+      if (!(cache && readCache<T>(path) !== undefined)) setLoading(true);
       setError('');
     }
-    get<T>(path, controller.signal)
+    get<T>(path, controller.signal, { cache })
       .then((result) => {
         if (controller.signal.aborted) return;
         loadedPath.current = path;
@@ -40,6 +41,6 @@ export function useResource<T>(
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [path, tick, revision, silentRefresh]);
+  }, [path, tick, revision, silentRefresh, cache]);
   return { data, loading, error, refresh: () => setRevision((v) => v + 1) };
 }
