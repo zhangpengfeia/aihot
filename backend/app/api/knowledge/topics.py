@@ -128,12 +128,21 @@ def topics(
     if topic_kind:
         filters.append(KnowledgeTopic.topic_kind == topic_kind)
     if q.strip():
-        filters.append(
-            or_(
-                KnowledgeTopic.title.contains(q.strip(), autoescape=True),
-                KnowledgeTopic.summary.contains(q.strip(), autoescape=True),
+        term = q.strip()
+        if session.get_bind().dialect.name == "mysql":
+            # 走 ngram 全文索引，避免 title/summary 的 LIKE 全表扫描。
+            from sqlalchemy.dialects import mysql
+
+            filters.append(
+                mysql.match(KnowledgeTopic.title, KnowledgeTopic.summary, against=term)
             )
-        )
+        else:
+            filters.append(
+                or_(
+                    KnowledgeTopic.title.contains(term, autoescape=True),
+                    KnowledgeTopic.summary.contains(term, autoescape=True),
+                )
+            )
     if day:
         start = datetime.combine(day, time.min, SHANGHAI).replace(tzinfo=SHANGHAI)
         from datetime import UTC
@@ -197,8 +206,16 @@ def meta(
             .order_by(ManagedKnowledgeSource.id)
         )
     )
+    # 来源计数一次 GROUP BY 取回，避免逐来源 COUNT 查询。
+    counts = dict(
+        session.execute(
+            select(KnowledgeTopic.feed_source_key, func.count()).group_by(
+                KnowledgeTopic.feed_source_key
+            )
+        ).all()
+    )
     source_items = (
-        [source_data(session, source, rules=rules) for source in configured]
+        [source_data(session, source, counts, rules=rules) for source in configured]
         if configured
         else [
             {
@@ -283,24 +300,6 @@ def hotlists(
     from app.models import HotListSnapshot
     from app.utils.time import iso
 
-    result = []
-    for source in session.scalars(
-        select(ManagedKnowledgeSource)
-        .where(
-            ManagedKnowledgeSource.adapter == "hotlist", ManagedKnowledgeSource.deleted_at.is_(None)
-        )
-        .order_by(ManagedKnowledgeSource.id)
-    ):
-        snapshot = session.get(HotListSnapshot, source.source_key)
-        result.append(
-            {
-                **source_data(session, source),
-                "observed_at": iso(snapshot.observed_at) if snapshot else None,
-                "items": snapshot.entries if snapshot else [],
-            }
-        )
-    from app.core.hot_platforms import HOT_PLATFORM_CATALOG, platform_for_source
-
     configured = list(
         session.scalars(
             select(ManagedKnowledgeSource)
@@ -311,6 +310,48 @@ def hotlists(
             .order_by(ManagedKnowledgeSource.id)
         )
     )
+    keys = [source.source_key for source in configured]
+    # 一次性批量预载榜单快照与来源状态，避免对每个来源逐条查询（N+1）。
+    snapshots = (
+        {
+            row.source_key: row
+            for row in session.scalars(
+                select(HotListSnapshot).where(HotListSnapshot.source_key.in_(keys))
+            )
+        }
+        if keys
+        else {}
+    )
+    if keys:
+        # 预热身份映射，source_data 内部 db.get 命中缓存不再发查询。
+        list(
+            session.scalars(
+                select(KnowledgeSourceState).where(KnowledgeSourceState.source_key.in_(keys))
+            )
+        )
+        counts = dict(
+            session.execute(
+                select(KnowledgeTopic.feed_source_key, func.count())
+                .where(KnowledgeTopic.feed_source_key.in_(keys))
+                .group_by(KnowledgeTopic.feed_source_key)
+            ).all()
+        )
+    else:
+        counts = {}
+    rules = category_rules(session)
+
+    result = []
+    for source in configured:
+        snapshot = snapshots.get(source.source_key)
+        result.append(
+            {
+                **source_data(session, source, counts, rules),
+                "observed_at": iso(snapshot.observed_at) if snapshot else None,
+                "items": snapshot.entries if snapshot else [],
+            }
+        )
+    from app.core.hot_platforms import HOT_PLATFORM_CATALOG, platform_for_source
+
     by_id = {source.id: source for source in configured}
     grouped = {}
     custom = []

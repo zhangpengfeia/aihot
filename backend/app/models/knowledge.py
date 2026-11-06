@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -20,6 +21,16 @@ class KnowledgeTopic(Base):
     """以规范化 URL 去重的知识资料；缺失发布日期时保留 NULL，不伪造时间。"""
 
     __tablename__ = "knowledge_topics"
+    __table_args__ = (
+        # 中文标题/摘要全文检索，MySQL 使用 ngram 分词；SQLite 测试回退 LIKE。
+        Index(
+            "ix_knowledge_topics_ft",
+            "title",
+            "summary",
+            mysql_prefix="FULLTEXT",
+            mysql_with_parser="ngram",
+        ),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     url_hash: Mapped[str] = mapped_column(String(64), unique=True)
     source_url: Mapped[str] = mapped_column(Text)

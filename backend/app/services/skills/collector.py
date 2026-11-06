@@ -4,7 +4,7 @@ import logging
 import time
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings
@@ -96,6 +96,19 @@ def persist(session: Session, run_id: int, candidates: int, records: list[tuple]
         session.add(snapshot)
         snapshots.append(snapshot)
     session.flush()
+    # 维护「每个仓库最新快照」标志：同一仓库旧快照置为非最新，供资料库接口快速过滤。
+    if snapshots:
+        repo_ids = [s.repo_id for s in snapshots]
+        new_ids = [s.id for s in snapshots]
+        session.execute(
+            update(Snapshot)
+            .where(
+                Snapshot.repo_id.in_(repo_ids),
+                Snapshot.id.not_in(new_ids),
+                Snapshot.is_latest.is_(True),
+            )
+            .values(is_latest=False)
+        )
     orders = {
         "stars": sorted(snapshots, key=lambda s: (-s.stars, s.repo_id)),
         "growth": sorted(

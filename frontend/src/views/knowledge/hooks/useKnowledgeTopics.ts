@@ -22,6 +22,8 @@ export function useKnowledgeTopics() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { tick, refresh } = useRefreshTick();
+  // 元数据（分类/标签/来源/总数）变化低频，独立慢速刷新，避免每次筛选都重拉。
+  const { tick: metaTick, refresh: refreshMeta } = useRefreshTick(300_000);
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page), page_size: String(pageSize), q });
@@ -33,14 +35,8 @@ export function useKnowledgeTopics() {
     if (day) params.set('day', day);
     setLoading(true);
     setError('');
-    Promise.all([
-      get<typeof data>(`/knowledge/topics?${params}`, controller.signal),
-      get<Meta>('/knowledge/meta', controller.signal),
-    ])
-      .then(([items, info]) => {
-        setData(items);
-        setMeta(info);
-      })
+    get<typeof data>(`/knowledge/topics?${params}`, controller.signal)
+      .then(setData)
       .catch((e) => {
         if (!controller.signal.aborted) setError((e as Error).message);
       })
@@ -49,6 +45,15 @@ export function useKnowledgeTopics() {
       });
     return () => controller.abort();
   }, [page, pageSize, sourceId, sortBy, labels, kind, region, q, day, tick]);
+  useEffect(() => {
+    const controller = new AbortController();
+    get<Meta>('/knowledge/meta', controller.signal)
+      .then(setMeta)
+      .catch(() => {
+        // 元数据读取失败不阻塞列表；下次周期重试。
+      });
+    return () => controller.abort();
+  }, [metaTick]);
   return {
     labels,
     setLabels,
@@ -72,6 +77,9 @@ export function useKnowledgeTopics() {
     meta,
     loading,
     error,
-    refresh,
+    refresh: () => {
+      refresh();
+      refreshMeta();
+    },
   };
 }

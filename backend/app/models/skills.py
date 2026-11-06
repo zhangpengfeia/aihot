@@ -21,6 +21,7 @@ from app.core.database import Base
 
 class Run(Base):
     __tablename__ = "collection_runs"
+    __table_args__ = (Index("ix_run_status_scope_slot", "status", "scope", "slot"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     # slot 保留批次观测时间；scope 区分旧 Skills 批次与新 AI 影音项目榜。
     slot: Mapped[datetime] = mapped_column(DateTime, unique=True)
@@ -46,6 +47,8 @@ class Snapshot(Base):
     __table_args__ = (
         UniqueConstraint("run_id", "repo_id"),
         Index("ix_snapshot_repo_time", "repo_id", "observed_at"),
+        Index("ix_snapshot_stars", "stars"),
+        Index("ix_snapshot_is_latest", "is_latest"),
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     run_id: Mapped[int] = mapped_column(ForeignKey("collection_runs.id"))
@@ -67,11 +70,16 @@ class Snapshot(Base):
     delta_7d: Mapped[int | None] = mapped_column(Integer)
     baseline_7d_at: Mapped[datetime | None] = mapped_column(DateTime)
     installation: Mapped[str | None] = mapped_column(Text)
+    # 每个仓库只有最近一次快照标记为最新，供资料库接口快速过滤，避免 GROUP BY 全表扫描。
+    is_latest: Mapped[bool] = mapped_column(default=True)
 
 
 class Ranking(Base):
     __tablename__ = "rankings"
-    __table_args__ = (UniqueConstraint("run_id", "kind", "position"),)
+    __table_args__ = (
+        UniqueConstraint("run_id", "kind", "position"),
+        Index("ix_ranking_snapshot", "snapshot_id"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     run_id: Mapped[int] = mapped_column(ForeignKey("collection_runs.id"))
     snapshot_id: Mapped[int] = mapped_column(ForeignKey("snapshots.id"))

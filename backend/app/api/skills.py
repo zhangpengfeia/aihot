@@ -6,7 +6,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from app.core.database import get_session
 from app.models import Ranking, Run, Snapshot
@@ -63,6 +63,7 @@ def rankings(
         .join(Snapshot, Ranking.snapshot_id == Snapshot.id)
         .where(Ranking.run_id == run.id, Ranking.kind == kind)
         .order_by(Ranking.position)
+        .options(defer(Snapshot.readme), defer(Snapshot.installation))
     )
     return {
         "run": run_data(run),
@@ -115,35 +116,37 @@ def skills(
     session: Session = Depends(get_session),
 ):
     """每个仓库展示最近一次有效快照，掉出本期热榜的历史项目仍可搜索。"""
-    from sqlalchemy import func
-    from sqlalchemy.orm import defer
+    from sqlalchemy import or_
 
     from app.services.skills.metadata import extract_metadata
 
-    latest = select(func.max(Snapshot.id).label("id")).group_by(Snapshot.repo_id).subquery()
-    # 多标签分类数量较小，应用层精确匹配，避免不同数据库 JSON 比较语义不一致。
-    snapshots = session.scalars(
+    # 通过「最新」标志直接过滤，避免 MAX(id) GROUP BY repo_id 全表扫描。
+    query = (
         select(Snapshot)
-        .join(latest, Snapshot.id == latest.c.id)
+        .where(Snapshot.is_latest.is_(True))
         .order_by(Snapshot.stars.desc(), Snapshot.repo_id)
         .options(defer(Snapshot.readme))
     )
+    if q.strip():
+        query = query.where(
+            or_(
+                Snapshot.full_name.contains(q.strip(), autoescape=True),
+                Snapshot.description.contains(q.strip(), autoescape=True),
+            )
+        )
+    # 多标签分类数量较小，在已缩小到「每个仓库最新快照」的集合上应用层精确匹配，
+    # 避免不同数据库 JSON 比较语义不一致。
     found = []
-    for snapshot in snapshots:
+    for snapshot in session.scalars(query):
         item = snapshot_data(snapshot)
         if not snapshot.categories:
+            # 旧快照缺分类时按需回填，迁移后正常不会走到这里。
             categories, installation = extract_metadata(
-                snapshot.full_name, snapshot.description, snapshot.readme
+                snapshot.full_name, snapshot.description or "", snapshot.readme or ""
             )
-            item.update(categories=categories, installation=installation)
+            item["categories"], item["installation"] = categories, installation
         if category and category not in item["categories"] + (item.get("analysis") or {}).get(
             "domains", []
-        ):
-            continue
-        if (
-            q.strip()
-            and q.strip().lower()
-            not in f"{snapshot.full_name} {snapshot.description} {item.get('analysis') or {}}".lower()
         ):
             continue
         found.append(item)
