@@ -43,11 +43,12 @@ def test_hotlist_order_and_empty_errors(context):  # noqa: F811
 
     seed_sources(db, Settings(knowledge_sources=[SOURCE]))
     db.commit()
-    result = client.get("/api/knowledge/hotlists").json()["items"]
-    assert len(result) == 1
-    assert result[0]["items"][0]["title"] == "智能体与古代工程"
-    assert result[0]["items"][0]["score_label"] == "1234"
-    assert result[0]["observed_at"]
+    result = client.get("/api/knowledge/hotlists").json()["platforms"]
+    configured = [p for p in result if p["connection_status"] == "configured"]
+    assert len(configured) == 1
+    assert configured[0]["items"][0]["title"] == "智能体与古代工程"
+    assert configured[0]["items"][0]["score_label"] == "1234"
+    assert configured[0]["observed_at"]
 
     assert client.get("/api/knowledge/topics?tag=深海生物").json()["total"] == 1
     assert client.get("/api/knowledge/topics?hot_only=true").json()["total"] == 2

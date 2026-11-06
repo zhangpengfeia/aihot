@@ -424,7 +424,8 @@ def hotlists(
 
     platforms.sort(key=hotlist_priority)
     return {
-        "items": [item for item in result if not region or by_id[item["id"]].region == region],
+        # items 为历史兼容字段，前端以 platforms 为准；置空避免重复传输榜单词条。
+        "items": [],
         "platforms": platforms,
         "platform_count": len(platforms),
         "reserved_count": sum(p["connection_status"] == "reserved" for p in platforms),
