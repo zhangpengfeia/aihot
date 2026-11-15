@@ -12,11 +12,11 @@ export type ViewKey =
   | 'favorites'
   | 'summary'
   | 'creation';
-export const navigationItems: MenuProps['items'] = [
-  { key: 'summary', icon: <FireOutlined />, label: '首页看板' },
+export const navigationItems = [
+  { key: 'summary', icon: <FireOutlined aria-hidden />, label: '首页看板' },
   {
     key: 'skills',
-    icon: <BookOutlined />,
+    icon: <BookOutlined aria-hidden />,
     label: 'AI 项目库',
     children: [
       { key: 'library', label: '项目资料' },
@@ -26,7 +26,7 @@ export const navigationItems: MenuProps['items'] = [
   },
   {
     key: 'knowledge-group',
-    icon: <BulbOutlined />,
+    icon: <BulbOutlined aria-hidden />,
     label: '知识库',
     children: [
       { key: 'knowledge', label: '知识选题库' },
@@ -35,14 +35,14 @@ export const navigationItems: MenuProps['items'] = [
   },
   {
     key: 'creator-center',
-    icon: <BulbOutlined />,
+    icon: <BulbOutlined aria-hidden />,
     label: '创作者中心',
     children: [
-      { key: 'favorites', icon: <StarOutlined />, label: '收藏与个人备注' },
+      { key: 'favorites', icon: <StarOutlined aria-hidden />, label: '收藏与个人备注' },
       { key: 'creation', label: '选题创作看板' },
     ],
   },
-];
+] satisfies NonNullable<MenuProps['items']>;
 export const viewLabels: Record<ViewKey, string> = {
   hotlists: '知识库 / 全网热搜',
   users: '用户管理',

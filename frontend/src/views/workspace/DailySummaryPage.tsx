@@ -1,6 +1,7 @@
+import { ResponsiveTable } from '../../components/common/ResponsiveTable';
 import { PlusOutlined } from '@ant-design/icons';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, Modal, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Empty, Modal, Space, Tag, Typography } from 'antd';
 import {
   DndContext,
   DragOverlay,
@@ -76,7 +77,7 @@ export function DailySummaryPage({
   const data = resource.data;
   function list(items: Snapshot[], mode: 'new' | 'rise' | 'growth') {
     return (
-      <Table<Snapshot>
+      <ResponsiveTable<Snapshot>
         rowKey="repo_id"
         size="small"
         pagination={false}

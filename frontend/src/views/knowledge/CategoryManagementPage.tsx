@@ -1,3 +1,4 @@
+import { ResponsiveTable } from '../../components/common/ResponsiveTable';
 import { ReloadOutlined } from '@ant-design/icons';
 import {
   Alert,
@@ -11,7 +12,6 @@ import {
   Popconfirm,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
 } from 'antd';
@@ -91,7 +91,7 @@ export function CategoryManagementPage({ tick }: { tick: number }) {
         )}
         {resource.error && <Alert type="error" showIcon title={resource.error} />}
         <Card size="small">
-          <Flex gap={12} wrap>
+          <Flex className="page-filters" gap={12} wrap>
             <Input.Search
               aria-label="搜索分类"
               placeholder="搜索分类或合并后的名称"
@@ -115,7 +115,7 @@ export function CategoryManagementPage({ tick }: { tick: number }) {
           </Flex>
         </Card>
         <Card>
-          <Table<CategoryRow>
+          <ResponsiveTable<CategoryRow>
             rowKey="name"
             dataSource={filtered}
             loading={resource.loading}

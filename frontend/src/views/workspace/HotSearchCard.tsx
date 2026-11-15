@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Alert, Empty, Spin, Tooltip } from 'antd';
+import { Alert, Button, Empty, Spin, Tooltip } from 'antd';
 import { StarFilled, StarOutlined } from '@ant-design/icons';
 import { useAuth } from '../../app/auth';
 import { useResource } from '../../hooks/useResource';
+import { useMobileLayout } from '../../hooks/useMobileLayout';
 import { dashboardScope } from '../../store/dashboardStore';
 import { DEFAULT_HOT_SUBSCRIPTIONS, useHotSearchCardStore } from '../../store/hotSearchCardStore';
 import type { HotPlatform, HotSource } from '../../types/hotlists';
@@ -43,6 +44,8 @@ export function HotSearchCard({ tick }: { tick: number }) {
   const [group, setGroup] = useState('我的订阅');
   const [platformIds, setPlatformIds] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
+  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const mobile = useMobileLayout();
   const sources = resource.data?.platforms ?? legacyPlatforms(resource.data?.items ?? []);
   const groups = ['我的订阅', '全部', ...new Set(sources.map((source) => source.category))];
   const visible = sources.filter(
@@ -55,6 +58,8 @@ export function HotSearchCard({ tick }: { tick: number }) {
     visible.find((source) => source.id === active) ??
     visible.find((source) => source.id === 'baidu') ??
     visible[0];
+  const expanded = !!selected && expandedPlatform === selected.id;
+  const showToggle = mobile && !!selected && selected.items.length > 5;
   return (
     <div className="home-hot-widget" aria-label="首页热搜卡片">
       <div className="home-hot-filters">
@@ -158,22 +163,39 @@ export function HotSearchCard({ tick }: { tick: number }) {
                       }
                     />
                   )}
-                  {selected.items.map((item) => (
-                    <a
-                      className="home-hot-row"
-                      key={`${item.id}-${item.rank}`}
-                      href={item.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <span className={`home-hot-rank rank-${item.rank}`}>{item.rank}</span>
-                      <span className="home-hot-title">{item.title}</span>
-                      <span className="home-hot-score">
-                        {item.score_label ?? item.score?.toLocaleString() ?? '—'}
-                      </span>
-                    </a>
-                  ))}
+                  {(showToggle && !expanded ? selected.items.slice(0, 5) : selected.items).map(
+                    (item) => (
+                      <a
+                        className="home-hot-row"
+                        key={`${item.id}-${item.rank}`}
+                        href={item.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span className={`home-hot-rank rank-${item.rank}`}>{item.rank}</span>
+                        <span className="home-hot-title">{item.title}</span>
+                        <span className="home-hot-score">
+                          {item.score_label ?? item.score?.toLocaleString() ?? '—'}
+                        </span>
+                      </a>
+                    ),
+                  )}
                 </div>
+                {showToggle && (
+                  <Button
+                    type="link"
+                    block
+                    className="hot-list-toggle"
+                    aria-expanded={expanded}
+                    onClick={(event) => {
+                      if (expanded)
+                        event.currentTarget.closest('.home-hot-board')?.scrollIntoView();
+                      setExpandedPlatform(expanded ? null : selected.id);
+                    }}
+                  >
+                    {expanded ? '收起榜单' : `查看全部 ${selected.items.length} 条`}
+                  </Button>
+                )}
               </>
             ) : (
               <Empty

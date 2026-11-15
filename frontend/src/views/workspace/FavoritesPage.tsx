@@ -1,3 +1,4 @@
+import { ResponsiveTable } from '../../components/common/ResponsiveTable';
 import {
   Alert,
   Button,
@@ -8,7 +9,6 @@ import {
   Popconfirm,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
   message,
@@ -55,7 +55,7 @@ export function FavoritesPage({
       />
       <Space orientation="vertical" size={16} className="full-width">
         <Card size="small">
-          <Flex wrap gap={12}>
+          <Flex className="page-filters" wrap gap={12}>
             <Input.Search
               aria-label="搜索收藏和备注"
               allowClear
@@ -98,7 +98,7 @@ export function FavoritesPage({
         </Card>
         {resource.error && <Alert type="error" title={resource.error} showIcon />}
         <Card>
-          <Table<PersonalItem>
+          <ResponsiveTable<PersonalItem>
             rowKey="id"
             loading={resource.loading}
             dataSource={resource.data?.items ?? []}

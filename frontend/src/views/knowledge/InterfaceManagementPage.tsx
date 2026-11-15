@@ -1,3 +1,4 @@
+import { ResponsiveTable } from '../../components/common/ResponsiveTable';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
   Alert,
@@ -12,7 +13,6 @@ import {
   Space,
   Statistic,
   Switch,
-  Table,
   Tag,
   Typography,
 } from 'antd';
@@ -154,7 +154,7 @@ export function InterfaceManagementPage({ tick }: { tick: number }) {
         />
         {resource.error && <Alert type="error" showIcon title={resource.error} />}
         <Card>
-          <Table<ManagedSource>
+          <ResponsiveTable<ManagedSource>
             rowKey="id"
             loading={resource.loading}
             dataSource={rows.filter((row) =>

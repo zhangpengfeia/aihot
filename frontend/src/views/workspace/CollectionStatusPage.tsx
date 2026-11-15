@@ -1,3 +1,4 @@
+import { ResponsiveTable } from '../../components/common/ResponsiveTable';
 import { usePageActive } from '../../app/pageActivity';
 import { useEffect, useRef, useState } from 'react';
 import { get, write } from '../../api/http';
@@ -13,7 +14,6 @@ import {
   Row,
   Space,
   Statistic,
-  Table,
   Tag,
   Typography,
 } from 'antd';
@@ -267,7 +267,7 @@ export function CollectionStatusPage({ tick }: { tick: number }) {
           )}
         </Card>
         <Card title="GitHub 最近 10 次采集">
-          <Table<Run>
+          <ResponsiveTable<Run>
             rowKey="id"
             dataSource={data?.recent_runs ?? []}
             loading={resource.loading}
@@ -291,7 +291,7 @@ export function CollectionStatusPage({ tick }: { tick: number }) {
           />
         </Card>
         <Card title="知识来源状态">
-          <Table
+          <ResponsiveTable
             rowKey="name"
             dataSource={data?.knowledge_sources ?? []}
             pagination={false}

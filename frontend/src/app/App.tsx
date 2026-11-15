@@ -121,7 +121,7 @@ function PageContent({ view, onSelect }: { view: ViewKey; onSelect: (id: number)
   return ['collection', 'categories', 'users'].includes(view) && user?.role !== 'admin' ? (
     <Alert type="warning" showIcon title="此页面仅限管理员访问" />
   ) : ['favorites', 'creation'].includes(view) && !user ? (
-    <Alert type="info" title="请点击左下角头像登录后访问自己的创作者中心" />
+    <Alert type="info" title="请通过用户菜单登录后访问自己的创作者中心" />
   ) : (
     content
   );

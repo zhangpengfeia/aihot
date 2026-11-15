@@ -12,12 +12,17 @@ import { write } from '../../api/http';
 import type { ViewKey } from '../../app/navigation';
 export function UserMenu({
   collapsed,
+  mobile = false,
+  active,
   onNavigate,
 }: {
   collapsed: boolean;
+  mobile?: boolean;
+  active?: boolean;
   onNavigate: (v: ViewKey) => void;
 }) {
   const { user, refresh } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [login, setLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
@@ -25,7 +30,9 @@ export function UserMenu({
     <>
       <Dropdown
         trigger={['click']}
-        placement="topLeft"
+        placement={mobile ? 'topRight' : 'topLeft'}
+        classNames={mobile ? { root: 'mobile-nav-popup' } : undefined}
+        onOpenChange={setMenuOpen}
         menu={{
           items: [
             {
@@ -40,13 +47,13 @@ export function UserMenu({
               ? [
                   {
                     key: 'collection',
-                    icon: <ApiOutlined />,
+                    icon: <ApiOutlined aria-hidden />,
                     label: '采集管理',
                     onClick: () => onNavigate('collection'),
                   },
                   {
                     key: 'users',
-                    icon: <TeamOutlined />,
+                    icon: <TeamOutlined aria-hidden />,
                     label: '用户管理',
                     onClick: () => onNavigate('users'),
                   },
@@ -55,7 +62,7 @@ export function UserMenu({
             { type: 'divider' },
             {
               key: 'auth',
-              icon: user ? <LogoutOutlined /> : <LoginOutlined />,
+              icon: user ? <LogoutOutlined aria-hidden /> : <LoginOutlined aria-hidden />,
               label: user ? '退出登录' : '账号登录',
               onClick: async () => {
                 if (!user) {
@@ -74,20 +81,33 @@ export function UserMenu({
           ],
         }}
       >
-        <button className="user-menu-button" aria-label="用户设置菜单">
-          <Avatar icon={<UserOutlined />} style={{ background: '#4263eb', flexShrink: 0 }} />
-          {!collapsed && (
-            <>
-              <span>
-                <strong>{user?.display_name ?? '访客'}</strong>
-                <small>
-                  {user ? (user.role === 'admin' ? '管理员' : '用户') : '公开浏览 · 点击登录'}
-                </small>
-              </span>
-              <span>···</span>
-            </>
-          )}
-        </button>
+        {mobile ? (
+          <button
+            type="button"
+            className="mobile-nav-button"
+            data-active={active}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <UserOutlined aria-hidden />
+            <span>我的</span>
+          </button>
+        ) : (
+          <button type="button" className="user-menu-button" aria-label="用户设置菜单">
+            <Avatar icon={<UserOutlined />} style={{ background: '#4263eb', flexShrink: 0 }} />
+            {!collapsed && (
+              <>
+                <span>
+                  <strong>{user?.display_name ?? '访客'}</strong>
+                  <small>
+                    {user ? (user.role === 'admin' ? '管理员' : '用户') : '公开浏览 · 点击登录'}
+                  </small>
+                </span>
+                <span>···</span>
+              </>
+            )}
+          </button>
+        )}
       </Dropdown>
       <Modal
         title="账号登录"

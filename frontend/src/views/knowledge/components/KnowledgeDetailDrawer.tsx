@@ -12,12 +12,7 @@ export function KnowledgeDetailDrawer({
   onClose: () => void;
 }) {
   return (
-    <Drawer
-      title="知识选题资料"
-      open={selected !== null}
-      onClose={onClose}
-      size={Math.min(760, window.innerWidth)}
-    >
+    <Drawer title="知识选题资料" open={selected !== null} onClose={onClose} size="min(760px, 100%)">
       {selected && (
         <Space orientation="vertical" size={24} className="full-width">
           <div>

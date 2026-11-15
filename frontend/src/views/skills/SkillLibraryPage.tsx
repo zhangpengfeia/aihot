@@ -1,18 +1,6 @@
+import { ResponsiveTable, type ResponsiveColumns } from '../../components/common/ResponsiveTable';
 import { BookOutlined } from '@ant-design/icons';
-import type { TableProps } from 'antd';
-import {
-  Alert,
-  Button,
-  Card,
-  Empty,
-  Flex,
-  Input,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Empty, Flex, Input, Select, Space, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { get, readCache } from '../../api/http';
 import { type Snapshot } from '../../types/skills';
@@ -70,9 +58,10 @@ export default function SkillLibraryPage({
       });
     return () => controller.abort();
   }, [page, q, category, tick]);
-  const columns: TableProps<Snapshot>['columns'] = [
+  const columns: ResponsiveColumns<Snapshot> = [
     {
       title: '项目与用途',
+      mobileLabel: '',
       width: 430,
       render: (_, item) => (
         <div>
@@ -131,7 +120,7 @@ export default function SkillLibraryPage({
   return (
     <Space orientation="vertical" size={16} className="full-width">
       <Card size="small">
-        <Flex gap={12} wrap>
+        <Flex className="page-filters" gap={12} wrap>
           <Input.Search
             aria-label="搜索 AI 项目"
             placeholder="搜索项目名称或介绍"
@@ -161,7 +150,7 @@ export default function SkillLibraryPage({
         <Alert type="error" showIcon title={error} />
       ) : (
         <Card className="ranking-card" title={`AI 项目资料 · ${data.total} 个`}>
-          <Table<Snapshot>
+          <ResponsiveTable<Snapshot>
             rowKey="id"
             columns={columns}
             dataSource={data.items}

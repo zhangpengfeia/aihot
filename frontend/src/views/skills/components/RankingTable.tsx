@@ -1,6 +1,9 @@
+import {
+  ResponsiveTable,
+  type ResponsiveColumns,
+} from '../../../components/common/ResponsiveTable';
 import { ArrowUpOutlined, BookOutlined, StarOutlined } from '@ant-design/icons';
-import type { TableProps } from 'antd';
-import { Button, Grid, Space, Table, Tag, Typography } from 'antd';
+import { Button, Grid, Space, Tag, Typography } from 'antd';
 import type { ReactNode } from 'react';
 import { type Snapshot } from '../../../types/skills';
 const { Text, Paragraph } = Typography;
@@ -16,7 +19,7 @@ export function RankingTable({
   onSelect: (id: number) => void;
 }) {
   const screens = Grid.useBreakpoint();
-  const columns: TableProps<Snapshot>['columns'] = [
+  const columns: ResponsiveColumns<Snapshot> = [
     {
       title: '排名',
       dataIndex: 'rank',
@@ -28,6 +31,7 @@ export function RankingTable({
     {
       title: '项目',
       key: 'project',
+      mobileLabel: '',
       width: 480,
       render: (_, item) => (
         <div className="project-cell">
@@ -62,6 +66,7 @@ export function RankingTable({
           累计 Star
         </Space>
       ),
+      mobileLabel: '累计 Star',
       dataIndex: 'stars',
       width: 140,
       align: 'right',
@@ -103,7 +108,7 @@ export function RankingTable({
   ];
 
   return (
-    <Table<Snapshot>
+    <ResponsiveTable<Snapshot>
       columns={columns}
       dataSource={items}
       rowKey="id"

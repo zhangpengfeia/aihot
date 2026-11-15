@@ -17,6 +17,7 @@ import {
   Typography,
 } from 'antd';
 import { useResource } from '../../hooks/useResource';
+import { useMobileLayout } from '../../hooks/useMobileLayout';
 import { formatTime } from '../../utils/date';
 import { legacyPlatforms } from '../../utils/hotlists';
 import type { HotPlatform, HotSource } from '../../types/hotlists';
@@ -40,6 +41,8 @@ export function HotListsPage({
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState('全部');
   const [selected, setSelected] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const mobile = useMobileLayout();
   const sources = resource.data?.platforms ?? legacyPlatforms(resource.data?.items ?? []);
   const filters = compact ? platformIds : selected;
   const visible = sources.filter(
@@ -61,7 +64,13 @@ export function HotListsPage({
     <Space orientation="vertical" className="full-width" size={16}>
       {!compact && (
         <>
-          <Flex justify="space-between" align="center" wrap gap={12}>
+          <Flex
+            className="page-heading hot-lists-heading"
+            justify="space-between"
+            align="center"
+            wrap
+            gap={12}
+          >
             <div>
               <Typography.Title level={2}>全网热搜</Typography.Title>
               <Typography.Text type="secondary">
@@ -73,7 +82,7 @@ export function HotListsPage({
             </Button>
           </Flex>
           <Card size="small">
-            <Flex gap={12} wrap align="center">
+            <Flex className="page-filters" gap={12} wrap align="center">
               <PlatformPicker platforms={sources} value={selected} onChange={setSelected} />
               <Segmented
                 aria-label="平台地区筛选"
@@ -100,68 +109,75 @@ export function HotListsPage({
           gutter={[16, 16]}
           style={{ minHeight: resource.loading && !displayed.length ? 160 : undefined }}
         >
-          {displayed.map((source) => (
-            <Col key={source.id} xs={24} lg={compact ? 24 : 12} xl={compact ? 24 : 8}>
-              <Card
-                className="hot-platform-card"
-                size={compact ? 'small' : 'default'}
-                title={source.name}
-                extra={
-                  <Tooltip
-                    title={
-                      source.error ? `最近采集失败，以下可能是历史榜单：${source.error}` : undefined
-                    }
-                  >
-                    <Tag
-                      color={
-                        source.status === 'success'
-                          ? 'green'
-                          : source.status === 'failed'
-                            ? 'red'
-                            : 'default'
+          {displayed.map((source) => {
+            const items = source.items
+              .filter(
+                (item) =>
+                  !query ||
+                  source.name.includes(query) ||
+                  item.title.toLowerCase().includes(query.toLowerCase()),
+              )
+              .slice(0, compact ? 5 : 50);
+            const isExpanded = expanded.includes(source.id);
+            const showToggle = mobile && items.length > 5;
+            return (
+              <Col key={source.id} xs={24} lg={compact ? 24 : 12} xl={compact ? 24 : 8}>
+                <Card
+                  className="hot-platform-card"
+                  size={compact ? 'small' : 'default'}
+                  title={source.name}
+                  extra={
+                    <Tooltip
+                      title={
+                        source.error
+                          ? `最近采集失败，以下可能是历史榜单：${source.error}`
+                          : undefined
                       }
                     >
-                      {source.connection_status === 'reserved'
-                        ? '预留'
-                        : !source.enabled
-                          ? '未启用'
-                          : source.status === 'success'
-                            ? '已采集'
+                      <Tag
+                        color={
+                          source.status === 'success'
+                            ? 'green'
                             : source.status === 'failed'
-                              ? '采集失败'
-                              : '待采集'}
-                    </Tag>
-                  </Tooltip>
-                }
-              >
-                <Typography.Paragraph type="secondary">
-                  {source.region} · {source.category} ·{' '}
-                  {source.connection_status === 'reserved'
-                    ? '暂未接入 API'
-                    : `最近榜单：${formatTime(source.observed_at)}`}
-                </Typography.Paragraph>
-                {!source.items.length && (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={
-                      source.connection_status === 'reserved'
-                        ? '平台已预留，暂未接入采集接口'
-                        : source.enabled
-                          ? '暂无榜单，等待管理员或线上定时采集'
-                          : '接口已配置，待测试启用'
-                    }
-                  />
-                )}
-                <Space orientation="vertical" className="full-width" size={16}>
-                  {source.items
-                    .filter(
-                      (item) =>
-                        !query ||
-                        source.name.includes(query) ||
-                        item.title.toLowerCase().includes(query.toLowerCase()),
-                    )
-                    .slice(0, compact ? 5 : 50)
-                    .map((item) => (
+                              ? 'red'
+                              : 'default'
+                        }
+                      >
+                        {source.connection_status === 'reserved'
+                          ? '预留'
+                          : !source.enabled
+                            ? '未启用'
+                            : source.status === 'success'
+                              ? '已采集'
+                              : source.status === 'failed'
+                                ? '采集失败'
+                                : '待采集'}
+                      </Tag>
+                    </Tooltip>
+                  }
+                >
+                  <Typography.Paragraph type="secondary">
+                    {source.region} · {source.category} ·{' '}
+                    {source.connection_status === 'reserved'
+                      ? '暂未接入 API'
+                      : `最近榜单：${formatTime(source.observed_at)}`}
+                  </Typography.Paragraph>
+                  {!items.length && (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description={
+                        source.connection_status === 'reserved'
+                          ? '平台已预留，暂未接入采集接口'
+                          : source.items.length
+                            ? '没有匹配的热搜词'
+                            : source.enabled
+                              ? '暂无榜单，等待管理员或线上定时采集'
+                              : '接口已配置，待测试启用'
+                      }
+                    />
+                  )}
+                  <Space orientation="vertical" className="full-width" size={16}>
+                    {(showToggle && !isExpanded ? items.slice(0, 5) : items).map((item) => (
                       <div className="hot-platform-item" key={item.id}>
                         <div className="hot-platform-item-content">
                           <Space align="start">
@@ -178,9 +194,8 @@ export function HotListsPage({
                             </Typography.Link>
                           </Space>
                           {(item.score_label || item.score !== null) && (
-                            <Typography.Text type="secondary">
-                              {' '}
-                              · 来源指标 {item.score_label ?? item.score?.toLocaleString()}
+                            <Typography.Text type="secondary" className="hot-platform-score">
+                              来源指标 {item.score_label ?? item.score?.toLocaleString()}
                             </Typography.Text>
                           )}
                         </div>
@@ -192,10 +207,29 @@ export function HotListsPage({
                         )}
                       </div>
                     ))}
-                </Space>
-              </Card>
-            </Col>
-          ))}
+                  </Space>
+                  {showToggle && (
+                    <Button
+                      type="link"
+                      block
+                      className="hot-list-toggle"
+                      aria-expanded={isExpanded}
+                      onClick={(event) => {
+                        if (isExpanded) {
+                          event.currentTarget.closest('.hot-platform-card')?.scrollIntoView();
+                        }
+                        setExpanded((ids) =>
+                          isExpanded ? ids.filter((id) => id !== source.id) : [...ids, source.id],
+                        );
+                      }}
+                    >
+                      {isExpanded ? '收起榜单' : `查看全部 ${items.length} 条`}
+                    </Button>
+                  )}
+                </Card>
+              </Col>
+            );
+          })}
         </Row>
       </Spin>
     </Space>

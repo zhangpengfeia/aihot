@@ -1,6 +1,9 @@
+import {
+  ResponsiveTable,
+  type ResponsiveColumns,
+} from '../../../components/common/ResponsiveTable';
 import { BulbOutlined } from '@ant-design/icons';
-import type { TableProps } from 'antd';
-import { Button, Empty, Space, Table, Tag, Typography } from 'antd';
+import { Button, Empty, Space, Tag, Typography } from 'antd';
 import { AddToBoard } from '../../../components/workspace/PersonalActions';
 import type { Topic } from '../../../types/knowledge';
 import { formatTime } from '../../../utils/date';
@@ -18,9 +21,10 @@ export function KnowledgeTable({
   ReturnType<typeof useKnowledgeTopics>,
   'data' | 'loading' | 'page' | 'pageSize' | 'setPage' | 'setPageSize'
 > & { onSelect: (topic: Topic) => void }) {
-  const columns: TableProps<Topic>['columns'] = [
+  const columns: ResponsiveColumns<Topic> = [
     {
       title: '知识选题',
+      mobileLabel: '',
       key: 'topic',
       width: 440,
       render: (_, item) => (
@@ -87,7 +91,7 @@ export function KnowledgeTable({
     },
   ];
   return (
-    <Table<Topic>
+    <ResponsiveTable<Topic>
       rowKey="id"
       columns={columns}
       dataSource={data.items}

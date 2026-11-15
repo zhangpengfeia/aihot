@@ -1,17 +1,6 @@
+import { ResponsiveTable } from '../../components/common/ResponsiveTable';
 import { useState } from 'react';
-import {
-  Alert,
-  Button,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Switch,
-  Table,
-  Tag,
-  message,
-} from 'antd';
+import { Alert, Button, Form, Input, Modal, Select, Space, Switch, Tag, message } from 'antd';
 import { write } from '../../api/http';
 import { useResource } from '../../hooks/useResource';
 export interface User {
@@ -43,7 +32,7 @@ export function UserManagementPage() {
       <Button type="primary" onClick={() => open(null)}>
         新增用户
       </Button>
-      <Table<User>
+      <ResponsiveTable<User>
         rowKey="id"
         loading={resource.loading}
         dataSource={resource.data ?? []}

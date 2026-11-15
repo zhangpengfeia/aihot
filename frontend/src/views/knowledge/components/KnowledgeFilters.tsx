@@ -20,7 +20,7 @@ export function KnowledgeFilters(state: ReturnType<typeof useKnowledgeTopics>) {
   } = state;
   return (
     <Card size="small">
-      <Flex gap={12} wrap>
+      <Flex className="page-filters" gap={12} wrap>
         <CategoryPicker
           meta={meta}
           value={labels}
